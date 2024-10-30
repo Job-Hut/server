@@ -16,7 +16,7 @@ export interface Education {
   fieldOfStudy: string;
   institute: string;
   startDate: Date;
-  endDate: Date;
+  endDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +26,7 @@ export interface Experience {
   jobTitle: string;
   organization: string;
   startDate: Date;
-  endDate: Date;
+  endDate?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +47,7 @@ export interface User {
   email: string;
   password: string;
   profile: Profile;
+  collections: Collection[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,9 +83,9 @@ export interface Collection {
   name: string;
   description: string;
   public: boolean;
-  ownerId: string;
-  sharedWith: ObjectId[];
-  applications: ObjectId[];
+  ownerId: ObjectId;
+  sharedWith: User | ObjectId[];
+  applications: Application | ObjectId[];
   threads: Thread[];
   chat: Message[];
   createdAt: Date;
@@ -93,6 +94,8 @@ export interface Collection {
 
 export interface Application {
   _id: ObjectId;
+  ownerId: ObjectId;
+  collectionId: ObjectId;
   jobTitle: string;
   organization: string;
   location: string;
