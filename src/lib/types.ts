@@ -117,3 +117,14 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface JobVacancy {
+  title: string;
+  company: string;
+  companyLogo: string;
+  location: string;
+  description: string;
+  since: string;
+  salary?: string;
+  source: string;
+}
