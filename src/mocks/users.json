@@ -1,0 +1,57 @@
+[{
+  "_id": "648f1e0a9b1d1e04f74e59f0",
+  "username": "johnDoe123",
+  "avatar": "https://example.com/avatars/johnDoe123.png",
+  "fullName": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "hashed_password_here",
+  "profile": {
+    "bio": "A software developer with a passion for creating innovative solutions.",
+    "location": "New York, NY, USA",
+    "experiences": [
+      {
+        "_id": "648f1e0a9b1d1e04f74e59f1",
+        "jobTitle": "Senior Software Engineer",
+        "organization": "Tech Solutions Inc.",
+        "startDate": "2020-06-01T00:00:00Z",
+        "endDate": "2024-10-30T00:00:00Z",
+        "createdAt": "2020-05-01T00:00:00Z",
+        "updatedAt": "2024-10-30T00:00:00Z"
+      },
+      {
+        "_id": "648f1e0a9b1d1e04f74e59f2",
+        "jobTitle": "Junior Developer",
+        "organization": "Web Innovations LLC",
+        "startDate": "2018-01-15T00:00:00Z",
+        "endDate": "2020-05-31T00:00:00Z",
+        "createdAt": "2018-01-01T00:00:00Z",
+        "updatedAt": "2020-05-30T00:00:00Z"
+      }
+    ],
+    "educations": [
+      {
+        "_id": "648f1e0a9b1d1e04f74e59f3",
+        "degree": "Bachelor of Science",
+        "fieldOfStudy": "Computer Science",
+        "institute": "University of Technology",
+        "startDate": "2014-09-01T00:00:00Z",
+        "endDate": "2018-06-30T00:00:00Z",
+        "createdAt": "2014-08-01T00:00:00Z",
+        "updatedAt": "2018-06-29T00:00:00Z"
+      }
+    ],
+    "licenses": [
+      {
+        "_id": "648f1e0a9b1d1e04f74e59f4",
+        "name": "Certified Java Developer",
+        "institute": "Java Certification Board",
+        "issuedAt": "2021-05-01T00:00:00Z",
+        "expiryDate": "2024-05-01T00:00:00Z",
+        "createdAt": "2021-04-01T00:00:00Z",
+        "updatedAt": "2021-04-30T00:00:00Z"
+      }
+    ]
+  },
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2024-10-30T00:00:00Z"
+}]
