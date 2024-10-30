@@ -1,6 +1,8 @@
 import Collection from "../models/collection.model";
 
 export const typeDefs = `#graphql
+  scalar Date
+
   type Task {
     title: String
     description: String
@@ -57,8 +59,8 @@ export const typeDefs = `#graphql
     applications: [Application]
     threads: [Thread]
     chat: [Chat]
-    createdAt: String
-    updatedAt: String
+    createdAt: Date
+    updatedAt: Date
   }
 
   type Query {
@@ -99,7 +101,9 @@ export const resolvers = {
       return await Collection.find();
     },
     getCollectionById: async (_, { id }) => {
-      return await Collection.findById(id);
+      const result = await Collection.findById(id);
+      if (!result) throw new Error("Collection not found");
+      return result;
     },
   },
 
@@ -117,6 +121,10 @@ export const resolvers = {
         // chat,
       },
     ) => {
+      if (typeof publicValue !== "boolean") {
+        throw new Error("Public is required and must be a boolean");
+      }
+
       const newCollection = new Collection({
         name,
         description,
@@ -131,8 +139,9 @@ export const resolvers = {
     },
 
     deleteCollection: async (_, { id }) => {
-      const deletedCollection = await Collection.findByIdAndDelete(id);
-      return deletedCollection;
+      const result = await Collection.findByIdAndDelete(id);
+      if (!result) throw new Error("Collection not found");
+      return result;
     },
 
     updateCollection: async (
@@ -148,6 +157,11 @@ export const resolvers = {
         // chat,
       },
     ) => {
+      const exist = await Collection.findById(id);
+      if (!exist) {
+        throw new Error(`Collection with ID '${id}' not found.`);
+      }
+
       const updateData = {
         ...(name && { name }),
         ...(description && { description }),
