@@ -79,6 +79,17 @@ export const typeDefs = `#graphql
     ): Collection
 
     deleteCollection(id: ID!): Collection
+
+    updateCollection(
+      id: ID!
+      name: String
+      description: String
+      public: Boolean
+      sharedWith: [String]
+      # applications: [ApplicationInput]
+      # threads: [ThreadInput]
+      # chat: [ChatInput]
+    ): Collection
   }
 `;
 
@@ -112,9 +123,9 @@ export const resolvers = {
         public: publicValue,
         ownerId,
         sharedWith,
-        applications: [],
-        threads: [],
-        chat: [],
+        // applications: [],
+        // threads: [],
+        // chat: [],
       });
       return await newCollection.save();
     },
@@ -122,6 +133,32 @@ export const resolvers = {
     deleteCollection: async (_, { id }) => {
       const deletedCollection = await Collection.findByIdAndDelete(id);
       return deletedCollection;
+    },
+
+    updateCollection: async (
+      _,
+      {
+        id,
+        name,
+        description,
+        public: publicValue,
+        sharedWith,
+        // applications,
+        // threads,
+        // chat,
+      },
+    ) => {
+      const updateData = {
+        ...(name && { name }),
+        ...(description && { description }),
+        ...(publicValue !== undefined && { public: publicValue }),
+        ...(sharedWith && { sharedWith }),
+        // ...(applications && { applications }),
+        // ...(threads && { threads }),
+        // ...(chat && { chat }),
+      };
+
+      return await Collection.findByIdAndUpdate(id, updateData, { new: true });
     },
   },
 };
