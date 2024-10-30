@@ -63,6 +63,7 @@ export const typeDefs = `#graphql
 
   type Query {
     getAllCollection: [Collection]
+    getCollectionById(id: ID!): Collection 
   }
 
   type Mutation {
@@ -83,6 +84,9 @@ export const resolvers = {
   Query: {
     getAllCollection: async () => {
       return await Collection.find();
+    },
+    getCollectionById: async (_, { id }) => {
+      return await Collection.findById(id);
     },
   },
 
