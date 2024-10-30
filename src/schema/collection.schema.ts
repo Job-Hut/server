@@ -62,8 +62,7 @@ export const typeDefs = `#graphql
   }
 
   type Query {
-    collections: [Collection]
-    collection(id: ID!): Collection
+    getAllCollection: [Collection]
   }
 
   type Mutation {
@@ -77,12 +76,16 @@ export const typeDefs = `#graphql
       # threads: [Thread]
       # chat: [Chat]
     ): Collection
-
-    deleteCollection(id: ID!): Collection
   }
 `;
 
 export const resolvers = {
+  Query: {
+    getAllCollection: async () => {
+      return await Collection.find();
+    },
+  },
+
   Mutation: {
     createCollection: async (
       _,
