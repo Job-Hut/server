@@ -1,24 +1,76 @@
-import User from "../models/user.model";
+import User, { register } from "../models/user.model";
 
 export const typeDefs = `#graphql
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
+  
+  scalar Date
 
-  # This "Book" type defines the queryable fields for every book in our data source.
   type User {
-    title: String
-    author: String
-    fullName: String
-    email: String
-    password: String
+    username: String!
+    avatar: String
+    fullName: String!
+    email: String!
+    password: String!
+    profile: Profile
+    createdAt: Date
+    updatedAt: Date
   }
 
-  # The "Query" type is special: it lists all of the available queries that
-  # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
+  type Profile {
+    location: String
+    experiences: [Experience]
+    education: [Education]
+    licenses: [License]
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  type Experience {
+    jobTitle: String!
+    institute: String!
+    startDate: Date!
+    endDate: Date
+  }
+
+  type Education {
+    name: String!
+    institute: String!
+    startDate: String!
+    endDate: Date
+  }
+
+  type License {
+    number: String!
+    name: String!
+    issuedBy: String!
+    issuedAt: Date!
+    expiryDate: Date!
+  }
+
+  input RegisterInput {
+    username: String!
+    avatar: String
+    fullName: String!
+    email: String!
+    password: String!
+  }
+  
   type Query {
     users: [User]
   }
+
+  type Mutation {
+    register(input: RegisterInput): User!
+  }
+
 `;
+
+type RegisterInput = {
+  username: string
+  avatar: string
+  fullName: string
+  email: string
+  password: string
+}
 
 export const resolvers = {
   Query: {
@@ -26,4 +78,15 @@ export const resolvers = {
       return await User.find();
     },
   },
-};
+  Mutation: {
+    register: async (_, { input }: {input: RegisterInput}) => {
+      try {
+        const {username, avatar, fullName, email, password} = input
+        const newUser = await register(username, avatar, fullName, email, password)
+        return newUser;
+      } catch (error) {
+        throw new Error("Registration failed: " + error.message)
+      }
+    }
+  }
+}
