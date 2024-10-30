@@ -77,6 +77,8 @@ export const typeDefs = `#graphql
       # threads: [Thread]
       # chat: [Chat]
     ): Collection
+
+    deleteCollection(id: ID!): Collection
   }
 `;
 
@@ -115,6 +117,11 @@ export const resolvers = {
         chat: [],
       });
       return await newCollection.save();
+    },
+
+    deleteCollection: async (_, { id }) => {
+      const deletedCollection = await Collection.findByIdAndDelete(id);
+      return deletedCollection;
     },
   },
 };
