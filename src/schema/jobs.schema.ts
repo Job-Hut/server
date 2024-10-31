@@ -24,13 +24,14 @@ type Query {
 export const resolvers = {
   Query: {
     getJobs: async () => {
-      const jobsStreet: JobVacancy[] = await jobStreet();
-      const kalibrrSource: JobVacancy[] = await kalibrr();
-
       const data = await redis.get("jobs");
+
       if (data) {
         return JSON.parse(data);
       }
+
+      const jobsStreet: JobVacancy[] = await jobStreet();
+      const kalibrrSource: JobVacancy[] = await kalibrr();
 
       await redis.set(
         "jobs",
