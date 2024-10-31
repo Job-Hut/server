@@ -32,7 +32,10 @@ export const resolvers = {
         return JSON.parse(data);
       }
 
-      await redis.set("jobs", JSON.stringify([...jobsStreet, ...kalibrrSource]));
+      await redis.set(
+        "jobs",
+        JSON.stringify([...jobsStreet, ...kalibrrSource]),
+      );
 
       return [...jobsStreet, ...kalibrrSource];
     },
