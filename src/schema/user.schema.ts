@@ -79,9 +79,9 @@ export const resolvers = {
     },
   },
   Mutation: {
-    register: async (_, { input }: {input: RegisterInput}) => {
+    register: async (_, { input }: { input: RegisterInput }) => {
       try {
-        const {username, avatar, fullName, email, password} = input
+        const { username, avatar, fullName, email, password } = input
         const newUser = await register(username, avatar, fullName, email, password)
         return newUser;
       } catch (error) {

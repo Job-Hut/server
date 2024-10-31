@@ -16,16 +16,15 @@ type Job {
 }
 
 type Query {
-  jobs: [Job]
+  getJobs: [Job]
 }
 `;
 
 export const resolvers = {
   Query: {
-    jobs: async () => {
+    getJobs: async () => {
       const jobsStreet: JobVacancy[] = await jobStreet();
       const kalibrrSource: JobVacancy[] = await kalibrr();
-      console.log(kalibrrSource);
 
       return [...jobsStreet, ...kalibrrSource];
     },
