@@ -1,4 +1,18 @@
 services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app-network
+    volumes:
+      - .:/app
+    command: npm run dev
   mongo:
     image: mongo:latest
     environment:
@@ -8,13 +22,21 @@ services:
       - "27017:27017"
     volumes:
       - mongodb-data:/data/db
+    networks:
+      - app-network
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    networks:
+      - app-network
 
 volumes:
   mongodb-data:
   redis-data:
+
+networks:
+  app-network:
+    driver: bridge

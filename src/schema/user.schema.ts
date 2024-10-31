@@ -1,4 +1,5 @@
-import User, { register } from "../models/user.model";
+import { signToken } from "../helpers/jwt";
+import User, { register, login } from "../models/user.model";
 
 export const typeDefs = `#graphql
   
@@ -53,6 +54,13 @@ export const typeDefs = `#graphql
     email: String!
     password: String!
   }
+
+  type AuthPayload {
+    access_token: String!
+    userId: ID!
+    username: String!
+    email: String!
+  }
   
   type Query {
     users: [User]
@@ -60,6 +68,7 @@ export const typeDefs = `#graphql
 
   type Mutation {
     register(input: RegisterInput): User!
+    login(email: String!, password: String!): AuthPayload!
   }
 
 `;
@@ -79,14 +88,32 @@ export const resolvers = {
     },
   },
   Mutation: {
-    register: async (_, { input }: {input: RegisterInput}) => {
+    register: async (_, { input }: { input: RegisterInput }) => {
       try {
-        const {username, avatar, fullName, email, password} = input
+        const { username, avatar, fullName, email, password } = input
         const newUser = await register(username, avatar, fullName, email, password)
         return newUser;
       } catch (error) {
         throw new Error("Registration failed: " + error.message)
       }
+    },
+    login: async (_, {email, password}: {email: string, password: string}) => {
+       try {
+          const user = await login (email, password)
+          const token = signToken({
+            id: user.id,
+            username: user.username,
+            email: user.email
+          })
+          return {
+            access_token: token,
+            userId: user._id.toString(),
+            username: user.username,
+            email: user.email
+          }
+       } catch (error) {
+        throw new Error("Login failed: " + error.message)
+       } 
     }
   }
 }

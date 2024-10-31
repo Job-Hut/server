@@ -33,7 +33,6 @@ export const kalibrr = async (page: number = 1) => {
           salary: string;
           description: string;
         }) => {
-          console.log(job);
           result.push({
             title: job.name,
             company: job.company.name,
