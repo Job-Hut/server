@@ -1,0 +1,19 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+  steps:
+    - name: pull image
+      run: docker pull ${{ secrets.DOCKER_USERNAME }}/jobhut:latest
+    - name: delete old container
+      run: sudo docker rm -f jobhut || true
+    - name: run new container
+      run: sudo docker run -d -p 80:80 --env-file /home/ubuntu/runner/work/jobhut/.env --name jobhut --network app ${{ secrets.DOCKER_USERNAME }}/jobhut:latest
