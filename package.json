@@ -7,6 +7,7 @@
     "build:watch": "tsc -w",
     "start": "node dist/index.js",
     "start:watch": "nodemon dist/index.js",
+    "dev": "concurrently \"npm run build:watch\" \"npm run start:watch\"",
     "test": "jest ./src/**/*.test.ts",
     "test:watch": "jest --watch ./src/**/*.test.ts",
     "test:coverage": "jest --coverage --runInBand",
@@ -20,8 +21,8 @@
   "description": "",
   "dependencies": {
     "@apollo/server": "^4.11.0",
-    "cheerio": "^1.0.0",
     "bcrypt": "^5.1.1",
+    "cheerio": "^1.0.0",
     "graphql": "^16.9.0",
     "ioredis": "^5.4.1",
     "mongoose": "^8.7.3"
@@ -31,6 +32,7 @@
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.8.2",
+    "concurrently": "^9.0.1",
     "dotenv": "^16.4.5",
     "eslint": "^9.13.0",
     "globals": "^15.11.0",
