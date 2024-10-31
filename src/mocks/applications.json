@@ -1,0 +1,53 @@
+[
+  {
+  "_id": "648f1e0a9b1d1e04f74e59fd",
+  "ownerId": "648f1e0a9b1d1e04f74e59fe",
+  "collectionId": "648f1e0a9b1d1e04f74e59ff",
+  "jobTitle": "Marketing Manager",
+  "organization": "Global Marketing Agency",
+  "location": "New York, NY",
+  "salary": 95000,
+  "type": "Full-time",
+  "tasks": [
+    {
+      "_id": "648f1e0a9b1d1e04f74e5a00",
+      "title": "Update Resume",
+      "description": "Revise your resume to highlight relevant experience and skills for the marketing manager position.",
+      "completed": false,
+      "dueDate": "2024-11-05T00:00:00Z",
+      "createdAt": "2024-10-30T00:00:00Z",
+      "updatedAt": "2024-10-30T00:00:00Z"
+    },
+    {
+      "_id": "648f1e0a9b1d1e04f74e5a01",
+      "title": "Prepare Cover Letter",
+      "description": "Draft a personalized cover letter to accompany your application, emphasizing your fit for the role.",
+      "completed": false,
+      "dueDate": "2024-11-05T00:00:00Z",
+      "createdAt": "2024-10-30T00:00:00Z",
+      "updatedAt": "2024-10-30T00:00:00Z"
+    },
+    {
+      "_id": "648f1e0a9b1d1e04f74e5a02",
+      "title": "Gather References",
+      "description": "Contact previous employers or colleagues to request permission to use them as references.",
+      "completed": false,
+      "dueDate": "2024-11-03T00:00:00Z",
+      "createdAt": "2024-10-30T00:00:00Z",
+      "updatedAt": "2024-10-30T00:00:00Z"
+    },
+    {
+      "_id": "648f1e0a9b1d1e04f74e5a03",
+      "title": "Submit Application",
+      "description": "Complete the online application form and attach your resume and cover letter.",
+      "completed": false,
+      "dueDate": "2024-11-06T00:00:00Z",
+      "createdAt": "2024-10-30T00:00:00Z",
+      "updatedAt": "2024-10-30T00:00:00Z"
+    }
+  ],
+  "startDate": "2024-11-15T00:00:00Z",
+  "endDate": "2025-11-15T00:00:00Z",
+  "createdAt": "2024-10-30T00:00:00Z",
+  "updatedAt": "2024-10-30T00:00:00Z"
+}]
