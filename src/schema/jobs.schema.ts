@@ -25,7 +25,6 @@ export const resolvers = {
     getJobs: async () => {
       const jobsStreet: JobVacancy[] = await jobStreet();
       const kalibrrSource: JobVacancy[] = await kalibrr();
-      console.log(kalibrrSource);
 
       return [...jobsStreet, ...kalibrrSource];
     },
