@@ -97,7 +97,10 @@ export interface Application {
   ownerId: ObjectId;
   collectionId: ObjectId;
   jobTitle: string;
-  organization: string;
+  description: string;
+  organizationName: string;
+  organizationAddress: string;
+  organizationLogo: string;
   location: string;
   salary: number;
   type: string;
