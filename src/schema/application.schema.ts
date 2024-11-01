@@ -31,7 +31,7 @@ export const typeDefs = `#graphql
 
   type Query {
     getAllApplication: [Application]
-    getApplicationById(id: ID!): Application
+    getApplicationById(_id: ID!): Application
   }
 
   type Mutation {
@@ -68,11 +68,13 @@ export const typeDefs = `#graphql
 
 export const resolvers = {
   Query: {
-    getAllApplication: async () => {
+    getAllApplication: async (_, __, context) => {
+      const user = await context.authentication();
       return await Application.find();
     },
-    getApplicationById: async (_, { id }) => {
-      const result = await Application.findById(id);
+    getApplicationById: async (_, { _id }, context) => {
+      const user = await context.authentication();
+      const result = await Application.findById(_id);
       if (!result) throw new Error("Application not found");
       return result;
     },
