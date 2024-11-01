@@ -59,12 +59,11 @@ export const createHttpServer = () => {
 };
 
 // Main application setup
-export const setupApplication = async () => {
+export const setupApplication = async ({ startServer = true }) => {
   const { app, httpServer } = createHttpServer();
   const schema = createApolloSchema();
   const server = createApolloServer(schema, httpServer);
 
-  await initializeMongoDB();
   await server.start();
 
   app.use(
@@ -76,10 +75,17 @@ export const setupApplication = async () => {
     }),
   );
 
-  httpServer.listen(config.app.port, () => {
-    console.log(`Server is running on port ${config.app.port}`);
-  });
+  if (startServer) {
+    httpServer.listen(config.app.port, () => {
+      console.log(`Server is running on port ${config.app.port}`);
+    });
+  }
+
+  return { app, server, httpServer };
 };
 
 // Start the application
-setupApplication().catch(console.error);
+if (require.main === module) {
+  initializeMongoDB();
+  setupApplication({}).catch(console.error);
+}

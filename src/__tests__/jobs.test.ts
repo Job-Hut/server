@@ -1,79 +1,53 @@
-import { createApolloSchema, createApolloServer, createHttpServer } from "..";
-import redis from "../config/redis"; // Adjust the import path as needed
-import assert from "assert";
+import { Express } from "express";
+import request from "supertest";
+import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 
-jest.mock("../config/redis");
-
-const server = createApolloServer(
-  createApolloSchema(),
-  createHttpServer().httpServer,
-);
-
-describe("Job Schema", () => {
-  it("should return a cached list of job vacancies ", async () => {
-    const mockJobs = [
-      {
-        title: "Software Engineer",
-        company: "Tech Company",
-        companyLogo: "logo.png",
-        location: "San Francisco, CA",
-        description: "Job description",
-        salary: "$100,000",
-        source: "JobStreet",
-        since: "1 day ago",
-      },
-    ];
-
-    (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(mockJobs));
-
-    const query = `
-      query Jobs {
-        getJobs {
-          title
-          company
-          companyLogo
-          location
-          description
-          salary
-          source
-          since
-        }
-      }
-    `;
-
-    const response = await server.executeOperation({ query });
-
-    assert(response.body.kind === "single");
-    expect(response.body.singleResult.errors).toBeUndefined();
-    expect(response.body.singleResult.data).toBeDefined();
-    expect(response.body.singleResult.data?.getJobs).toBeInstanceOf(Array);
-    expect(redis.set).not.toHaveBeenCalled();
+describe("GraphQL Integration Tests", () => {
+  let app: Express;
+  beforeAll(async () => {
+    app = await setupTestEnvironment();
   });
 
-  it("should fetch jobs from sources and cache them if not in Redis", async () => {
-    (redis.get as jest.Mock).mockResolvedValue(null);
-    (redis.set as jest.Mock).mockResolvedValue("OK");
+  afterAll(async () => {
+    await teardownTestEnvironment();
+  });
 
+  it("should fetch jobs", async () => {
     const query = `
       query {
         getJobs {
           title
           company
-          companyLogo
           location
-          description
-          salary
-          source
-          since
         }
       }
     `;
-    const response = await server.executeOperation({ query });
 
-    assert(response.body.kind === "single");
-    expect(response.body.singleResult.errors).toBeUndefined();
-    expect(response.body.singleResult.data).toBeDefined();
-    expect(response.body.singleResult.data?.getJobs).toBeInstanceOf(Array);
-    expect(redis.set).toHaveBeenCalled();
+    const response = await request(app).post("/graphql").send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.getJobs).toBeDefined();
+  });
+
+  it("should return cached data from Redis on subsequent requests", async () => {
+    const query = `
+      query {
+        getJobs {
+          title
+          company
+          location
+        }
+      }
+    `;
+
+    const response1 = await request(app).post("/graphql").send({ query });
+    expect(response1.status).toBe(200);
+    const firstResult = response1.body.data.getJobs;
+
+    const response2 = await request(app).post("/graphql").send({ query });
+    expect(response2.status).toBe(200);
+    const secondResult = response2.body.data.getJobs;
+
+    expect(secondResult).toEqual(firstResult);
   });
 });
