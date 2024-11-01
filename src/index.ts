@@ -1,36 +1,85 @@
-import { startStandaloneServer } from "@apollo/server/standalone";
-import server from "./server";
 import config from "./config/config";
-import mongoose from "mongoose";
-import { verifyToken } from "./helpers/jwt";
-import User from "./models/user.model";
+import express from "express";
+import cors from "cors";
+import { createServer, Server as HttpServer } from "http";
+import { WebSocketServer } from "ws";
 
-(async () => {
-  mongoose
-    .connect(config.mongodb.connectionString, {
-      dbName: config.mongodb.database,
-    })
-    .then(() => {
-      console.log("connected to mongodb");
-    })
-    .catch((err) => {
-      console.error(err);
-    });
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: +config.app.port },
-    context: async ({ req }) => {
-      return {
-        authentication: async () => {
-          const authorization = req.headers.authorization;
-          if(!authorization) throw new Error("You have to login first!")
-          const token = authorization.split(" ")[1]
-          if (!token) throw new Error("Invalid Token");
-          const decoded = verifyToken(token)
-          const user = await User.findById(decoded._id)
-          return user;
-        }
-      }
-    }
+// GraphQL imports
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { useServer } from "graphql-ws/lib/use/ws";
+
+// Schema imports
+import { typeDefs, resolvers } from "./schema";
+import { createContext } from "./context";
+import { init as initializeMongoDB } from "./config/mongodb";
+import { GraphQLSchema } from "graphql";
+
+// Separate schema configuration
+export const createApolloSchema = () =>
+  makeExecutableSchema({ typeDefs, resolvers });
+
+// Separate server configuration
+export const createApolloServer = (
+  schema: GraphQLSchema,
+  httpServer: HttpServer,
+) => {
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/subscriptions",
   });
-  console.log(`🚀 Server ready at: ${url}`);
-})();
+
+  const serverCleanup = useServer({ schema }, wsServer);
+
+  return new ApolloServer({
+    schema,
+    introspection: true,
+    plugins: [
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose();
+            },
+          };
+        },
+      },
+    ],
+  });
+};
+
+// Create HTTP server with Express
+export const createHttpServer = () => {
+  const app = express();
+  const httpServer = createServer(app);
+  return { app, httpServer };
+};
+
+// Main application setup
+export const setupApplication = async () => {
+  const { app, httpServer } = createHttpServer();
+  const schema = createApolloSchema();
+  const server = createApolloServer(schema, httpServer);
+
+  await initializeMongoDB();
+  await server.start();
+
+  app.use(
+    "/graphql",
+    cors<cors.CorsRequest>(),
+    express.json(),
+    expressMiddleware(server, {
+      context: createContext,
+    }),
+  );
+
+  httpServer.listen(config.app.port, () => {
+    console.log(`Server is running on port ${config.app.port}`);
+  });
+};
+
+// Start the application
+setupApplication().catch(console.error);

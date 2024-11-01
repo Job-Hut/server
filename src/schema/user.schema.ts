@@ -109,9 +109,9 @@ export const typeDefs = `#graphql
   }
   
   type Query {
-    users: [User]
-    userById(userId: String!): User
-    userByContextId: User
+    getUsers: [User]
+    getUserById(userId: String!): User
+    getAuthenticatedUser: User
   }
 
   type Mutation {
@@ -134,16 +134,16 @@ export const typeDefs = `#graphql
 
 export const resolvers = {
   Query: {
-    users: async () => {
+    getUsers: async () => {
       return await User.find();
     },
-    userById: async (_: unknown, { userId }: { userId: string }) => {
-      return await User.findById(userId)
+    getUserById: async (_: unknown, { userId }: { userId: string }) => {
+      return await User.findById(userId);
     },
-    userByContextId: async (_: unknown, __: unknown, context) => {
+    getAuthenticatedUser: async (_: unknown, __: unknown, context) => {
       const loggedUser = await context.authentication();
-      return await User.findById(loggedUser._id)
-    }
+      return await User.findById(loggedUser._id);
+    },
   },
   Mutation: {
     register: async (_, { input }: { input: RegisterInput }) => {
@@ -219,7 +219,7 @@ export const resolvers = {
       { input }: { input: ExperienceInput },
       context,
     ) => {
-      try {      
+      try {
         const loggedUser = await context.authentication();
         return await addExperience(input, loggedUser._id);
       } catch (error) {
@@ -243,7 +243,7 @@ export const resolvers = {
       { experienceId }: { experienceId: string },
       context,
     ) => {
-      try {       
+      try {
         const loggedUser = await context.authentication();
         return await deleteExperience(experienceId, loggedUser._id);
       } catch (error) {
@@ -281,7 +281,7 @@ export const resolvers = {
     ) => {
       try {
         const loggedUser = await context.authentication();
-        return await deleteEducation(educationId, loggedUser._id); 
+        return await deleteEducation(educationId, loggedUser._id);
       } catch (error) {
         throw new Error("Delete Failed: " + error.message);
       }
@@ -291,7 +291,7 @@ export const resolvers = {
       { input }: { input: LicenseInput },
       context,
     ) => {
-      try {    
+      try {
         const loggedUser = await context.authentication();
         return await addLicense(input, loggedUser._id);
       } catch (error) {
@@ -315,7 +315,7 @@ export const resolvers = {
       { licenseId }: { licenseId: string },
       context,
     ) => {
-      try {       
+      try {
         const loggedUser = await context.authentication();
         return await deleteLicense(licenseId, loggedUser._id);
       } catch (error) {

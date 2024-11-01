@@ -25,11 +25,18 @@ export const typeDefs = `#graphql
     location: String
     salary: Int
     type: String
-    # tasks: [Task]
+    tasks: [Task]
     startDate: Date
     endDate: Date
     createdAt: Date
     updatedAt: Date
+  }
+
+  input TaskInput {
+    title: String
+    description: String
+    completed: Boolean
+    dueDate: Date
   }
 
   type Query {
@@ -49,7 +56,6 @@ export const typeDefs = `#graphql
       location: String
       salary: Int
       type: String
-      # tasks: [Task]
       startDate: Date
       endDate: Date
     ): Application
@@ -58,7 +64,6 @@ export const typeDefs = `#graphql
 
     updateApplication(
       _id: ID!
-      ownerId: ID
       collectionId: ID
       jobTitle: String
       description: String
@@ -68,9 +73,24 @@ export const typeDefs = `#graphql
       location: String
       salary: Int
       type: String
-      # tasks: [Task]
       startDate: Date
       endDate: Date
+    ): Application
+
+    addTaskToApplication(
+      applicationId: ID!,
+      task: TaskInput
+    ): Application
+
+    deleteTaskFromApplication(
+      applicationId: ID!,
+      taskId: ID!
+    ): Application
+
+    updateTaskInApplication(
+      applicationId: ID!,
+      taskId: ID!,
+      task: TaskInput
     ): Application
   }
 `;
@@ -128,6 +148,49 @@ export const resolvers = {
 
       if (!result) throw new Error("Application not found");
       return result;
+    },
+
+    addTaskToApplication: async (_, { applicationId, task }, context) => {
+      await context.authentication();
+      const application = await Application.findById(applicationId);
+      if (!application) throw new Error("Application not found");
+
+      application.tasks.push(task);
+      await application.save();
+
+      return application;
+    },
+
+    deleteTaskFromApplication: async (
+      _,
+      { applicationId, taskId },
+      context,
+    ) => {
+      await context.authentication();
+      const application = await Application.findById(applicationId);
+      if (!application) throw new Error("Application not found");
+
+      const task = application.tasks.id(taskId);
+      task.deleteOne();
+      await application.save();
+
+      return application;
+    },
+
+    updateTaskInApplication: async (
+      _,
+      { applicationId, taskId, task },
+      context,
+    ) => {
+      await context.authentication();
+      const application = await Application.findById(applicationId);
+      if (!application) throw new Error("Application not found");
+
+      const updateTask = application.tasks.id(taskId);
+      updateTask.set(task);
+      await application.save();
+
+      return application;
     },
   },
 };
