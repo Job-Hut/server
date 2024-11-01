@@ -7,6 +7,7 @@ const config = {
     host: process.env.APP_HOST || "localhost",
     port: process.env.APP_PORT || 3000,
     baseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
+    secret: process.env.APP_SECRET || "secret",
   },
   mongodb: {
     connectionString:
@@ -16,7 +17,7 @@ const config = {
   redis: {
     host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || 6379,
-  }
+  },
 };
 
 export default config;
