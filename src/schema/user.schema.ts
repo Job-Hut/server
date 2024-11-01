@@ -1,5 +1,23 @@
 import { signToken } from "../helpers/jwt";
-import User, { register, login, addExperience } from "../models/user.model";
+import {
+  EducationInput,
+  ExperienceInput,
+  LicenseInput,
+  RegisterInput,
+} from "../helpers/types";
+import User, {
+  register,
+  login,
+  addExperience,
+  addEducation,
+  addLicense,
+  updateExperience,
+  deleteExperience,
+  updateEducation,
+  deleteEducation,
+  updateLicense,
+  deleteLicense,
+} from "../models/user.model";
 
 export const typeDefs = `#graphql
   
@@ -92,6 +110,8 @@ export const typeDefs = `#graphql
   
   type Query {
     users: [User]
+    userById(userId: String!): User
+    userByContextId: User
   }
 
   type Mutation {
@@ -112,49 +132,18 @@ export const typeDefs = `#graphql
 
 `;
 
-type RegisterInput = {
-  username: string;
-  avatar: string;
-  fullName: string;
-  email: string;
-  password: string;
-};
-
-type ExperienceInput = {
-  jobTitle: string
-  institute: string
-  startDate: Date
-  endDate: Date
-}
-
-// type EditProfileInput = {
-//   location?: string;
-//   experiences?: {
-//     jobTitle: string;
-//     institute: string;
-//     startDate: Date;
-//     endDate?: Date;
-//   }[];
-//   education?: {
-//     name: string;
-//     institute: string;
-//     startDate: Date;
-//     endDate?: Date;
-//   }[];
-//   licenses?: {
-//     number: string;
-//     name: string;
-//     issuedBy: string;
-//     issuedAt: Date;
-//     expiryDate?: Date;
-//   }[];
-// };
-
 export const resolvers = {
   Query: {
     users: async () => {
       return await User.find();
     },
+    userById: async (_: unknown, { userId }: { userId: string }) => {
+      return await User.findById(userId)
+    },
+    userByContextId: async (_: unknown, __: unknown, context) => {
+      const loggedUser = await context.authentication();
+      return await User.findById(loggedUser._id)
+    }
   },
   Mutation: {
     register: async (_, { input }: { input: RegisterInput }) => {
@@ -193,21 +182,145 @@ export const resolvers = {
         throw new Error("Login failed: " + error.message);
       }
     },
-    updateLocation: async (_: unknown, { location }: { location: string }, context) => {
-      const loggedUser = await context.authentication();
-      const user = await User.findByIdAndUpdate(loggedUser._id, { "profile.location": location }, { new: true });
-      if (!user) throw new Error("User not found");
-      return user.profile;
+    updateLocation: async (
+      _: unknown,
+      { location }: { location: string },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          { "profile.location": location },
+          { new: true },
+        );
+        if (!user) throw new Error("User not found");
+        return user.profile;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
     },
-    updateBio: async (_: unknown, { bio}: { bio: string; userId: string }, context) => {
-      const loggedUser = await context.authentication();
-      const user = await User.findByIdAndUpdate(loggedUser._id, { "profile.bio": bio }, { new: true });
-      if (!user) throw new Error("User not found");
-      return user.profile;
+    updateBio: async (_: unknown, { bio }: { bio: string }, context) => {
+      try {
+        const loggedUser = await context.authentication();
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          { "profile.bio": bio },
+          { new: true },
+        );
+        if (!user) throw new Error("User not found");
+        return user.profile;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
     },
-    addExperience: async (_: unknown, { input }: { input: ExperienceInput }, context) => {
-      const loggedUser = await context.authentication();
-      return await addExperience(input, loggedUser._id);
+    addExperience: async (
+      _: unknown,
+      { input }: { input: ExperienceInput },
+      context,
+    ) => {
+      try {      
+        const loggedUser = await context.authentication();
+        return await addExperience(input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Adding Failed: " + error.message);
+      }
+    },
+    updateExperience: async (
+      _: unknown,
+      { experienceId, input }: { experienceId: string; input: ExperienceInput },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        return await updateExperience(experienceId, input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },
+    deleteExperience: async (
+      _: unknown,
+      { experienceId }: { experienceId: string },
+      context,
+    ) => {
+      try {       
+        const loggedUser = await context.authentication();
+        return await deleteExperience(experienceId, loggedUser._id);
+      } catch (error) {
+        throw new Error("Delete Failed: " + error.message);
+      }
+    },
+    addEducation: async (
+      _: unknown,
+      { input }: { input: EducationInput },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        return await addEducation(input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Adding Failed: " + error.message);
+      }
+    },
+    updateEducation: async (
+      _: unknown,
+      { educationId, input }: { educationId: string; input: EducationInput },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        return await updateEducation(educationId, input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },
+    deleteEducation: async (
+      _: unknown,
+      { educationId }: { educationId: string },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        return await deleteEducation(educationId, loggedUser._id); 
+      } catch (error) {
+        throw new Error("Delete Failed: " + error.message);
+      }
+    },
+    addLicense: async (
+      _: unknown,
+      { input }: { input: LicenseInput },
+      context,
+    ) => {
+      try {    
+        const loggedUser = await context.authentication();
+        return await addLicense(input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Adding Failed: " + error.message);
+      }
+    },
+    updateLicense: async (
+      _: unknown,
+      { licenseId, input }: { licenseId: string; input: LicenseInput },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        return await updateLicense(licenseId, input, loggedUser._id);
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },
+    deleteLicense: async (
+      _: unknown,
+      { licenseId }: { licenseId: string },
+      context,
+    ) => {
+      try {       
+        const loggedUser = await context.authentication();
+        return await deleteLicense(licenseId, loggedUser._id);
+      } catch (error) {
+        throw new Error("Delete Failed: " + error.message);
+      }
     },
   },
 };
