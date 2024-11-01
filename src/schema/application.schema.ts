@@ -13,7 +13,7 @@ export const typeDefs = `#graphql
   }
 
   type Application {
-    ownerId: ID
+    ownerId: String
     collectionId: String
     jobTitle: String
     organization: String
@@ -25,6 +25,10 @@ export const typeDefs = `#graphql
     endDate: String
     createdAt: String
     updatedAt: String
+  }
+
+  type Query {
+    getAllApplication: [Application]
   }
 
   type Mutation {
@@ -44,6 +48,12 @@ export const typeDefs = `#graphql
 `;
 
 export const resolvers = {
+  Query: {
+    getAllApplication: async () => {
+      return await Application.find();
+    },
+  },
+
   Mutation: {
     createApplication: async (
       _,
