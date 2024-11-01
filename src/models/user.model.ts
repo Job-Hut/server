@@ -42,6 +42,13 @@ type User = {
   password: string;
 };
 
+type ExperienceInput = {
+  jobTitle: string;
+  institute: string;
+  startDate: Date;
+  endDate?: Date;
+};
+
 export async function register(
   username: string,
   avatar: string,
@@ -81,6 +88,7 @@ export async function register(
     const hashedPassword = hashPassword(password);
 
     const newUserProfile = new Profile({
+      bio: "",
       location: "",
       experiences: [],
       education: [],
@@ -111,5 +119,22 @@ export async function login(email: string, password: string) {
   if (!isPasswordValid) throw new Error("Invalid Email/Password");
   return user;
 }
+
+export async function addExperience(input: ExperienceInput, userId: string) {
+  const userProfile = await User.findById(userId);
+  if (!userProfile) throw new Error("User not found");
+
+  if (input) {
+      const { jobTitle, institute, startDate, endDate } = input
+      if (jobTitle && institute && startDate) { 
+        userProfile.profile.experiences.push({ jobTitle, institute, startDate, endDate });
+      } 
+  }
+
+  await userProfile.save();
+  return userProfile.profile;
+}
+
+
 
 export default User;

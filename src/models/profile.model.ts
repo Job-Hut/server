@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 
 export const profileSchema = new mongoose.Schema({
+    bio : {
+      type: String
+    },
     location: {
       type: String,
     },
@@ -69,4 +72,4 @@ export const profileSchema = new mongoose.Schema({
     ],
   }, { timestamps: true });
   
-  export const Profile = mongoose.model("Profile", profileSchema);
+export const Profile = mongoose.model("Profile", profileSchema);
