@@ -1,25 +1,25 @@
 import mongoose from "mongoose";
 
 const taskSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  completed: { type: Boolean, required: true },
-  dueDate: { type: Date, required: true },
+  title: { type: String, default: null },
+  description: { type: String, default: null },
+  completed: { type: Boolean, default: null },
+  dueDate: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
 const applicationSchema = new mongoose.Schema({
-  ownerId: { type: String, required: true },
-  collectionId: { type: String },
-  jobTitle: { type: String, required: true },
-  organization: { type: String, required: true },
-  location: { type: String, required: true },
-  salary: { type: Number, required: true },
-  type: { type: String, required: true },
+  ownerId: { type: String, default: null },
+  collectionId: { type: String, default: null },
+  jobTitle: { type: String, default: null },
+  organization: { type: String, default: null },
+  location: { type: String, default: null },
+  salary: { type: Number, default: null },
+  type: { type: String, default: null },
   tasks: [taskSchema],
-  startDate: { type: Date, default: Date.now },
-  endDate: { type: Date, default: Date.now },
+  startDate: { type: Date, default: null },
+  endDate: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

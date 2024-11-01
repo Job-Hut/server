@@ -4,16 +4,17 @@ export const typeDefs = `#graphql
   scalar Date
 
   type Task {
+    _id: ID!
     title: String
     description: String
     completed: Boolean
-    dueDate: String
-    createdAt: String
-    updatedAt: String
+    dueDate: Date
+    createdAt: Date
+    updatedAt: Date
   }
 
   type Application {
-    id: ID!
+    _id: ID!
     ownerId: String
     collectionId: String
     jobTitle: String
@@ -22,10 +23,10 @@ export const typeDefs = `#graphql
     salary: Int
     type: String
     # tasks: [Task]
-    startDate: String
-    endDate: String
-    createdAt: String
-    updatedAt: String
+    startDate: Date
+    endDate: Date
+    createdAt: Date
+    updatedAt: Date
   }
 
   type Query {
@@ -47,7 +48,7 @@ export const typeDefs = `#graphql
       endDate: Date
     ): Application
 
-    deleteApplication(id: ID!): Application
+    deleteApplication(_id: ID!): Application
 
     updateApplication(
       id: ID!
@@ -58,6 +59,7 @@ export const typeDefs = `#graphql
       location: String
       salary: Int
       type: String
+      # tasks: [Task]
       startDate: Date
       endDate: Date
     ): Application
@@ -87,20 +89,21 @@ export const resolvers = {
         location,
         salary,
         type,
-        // tasks,
         startDate,
         endDate,
       },
+      context,
     ) => {
+      const user = await context.authentication();
+
       const newApplication = new Application({
-        ownerId,
+        ownerId: user._id,
         collectionId,
         jobTitle,
         organization,
         location,
         salary,
         type,
-        // tasks,
         startDate,
         endDate,
       });
