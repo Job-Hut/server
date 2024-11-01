@@ -51,6 +51,7 @@ export const typeDefs = `#graphql
   }
 
   type Collection {
+    _id: ID
     name: String
     description: String
     public: Boolean
@@ -92,6 +93,15 @@ export const typeDefs = `#graphql
       # threads: [ThreadInput]
       # chat: [ChatInput]
     ): Collection
+
+    addMessageToChat(
+      collectionId: ID!
+      message: String
+    ): Collection
+  }
+
+  type Subscription {
+    newMessage(collectionId: ID!): Chat
   }
 `;
 
@@ -110,16 +120,7 @@ export const resolvers = {
   Mutation: {
     createCollection: async (
       _,
-      {
-        name,
-        description,
-        public: publicValue,
-        ownerId,
-        sharedWith,
-        // applications,
-        // threads,
-        // chat,
-      },
+      { name, description, public: publicValue, ownerId, sharedWith },
     ) => {
       if (typeof publicValue !== "boolean") {
         throw new Error("Public is required and must be a boolean");
@@ -131,9 +132,6 @@ export const resolvers = {
         public: publicValue,
         ownerId,
         sharedWith,
-        // applications: [],
-        // threads: [],
-        // chat: [],
       });
       return await newCollection.save();
     },
@@ -173,6 +171,20 @@ export const resolvers = {
       };
 
       return await Collection.findByIdAndUpdate(id, updateData, { new: true });
+    },
+
+    addMessageToChat: async (_, { collectionId, message }, context) => {
+      const loggedUser = await context.authentication();
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+      collection.chat.push({
+        senderId: loggedUser._id,
+        content: message,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await collection.save();
+      return collection;
     },
   },
 };
