@@ -15,10 +15,13 @@ export const typeDefs = `#graphql
 
   type Application {
     _id: ID!
-    ownerId: String
-    collectionId: String
+    ownerId: ID!
+    collectionId: ID
     jobTitle: String
-    organization: String
+    description: String
+    organizationName: String
+    organizationAddress: String
+    organizationLogo: String
     location: String
     salary: Int
     type: String
@@ -36,10 +39,13 @@ export const typeDefs = `#graphql
 
   type Mutation {
     createApplication(
-      ownerId: String
+      ownerId: ID!
       collectionId: ID
       jobTitle: String
-      organization: String
+      description: String
+      organizationName: String
+      organizationAddress: String
+      organizationLogo: String
       location: String
       salary: Int
       type: String
@@ -52,10 +58,13 @@ export const typeDefs = `#graphql
 
     updateApplication(
       _id: ID!
-      ownerId: String
+      ownerId: ID
       collectionId: ID
       jobTitle: String
-      organization: String
+      description: String
+      organizationName: String
+      organizationAddress: String
+      organizationLogo: String
       location: String
       salary: Int
       type: String
@@ -69,11 +78,11 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Query: {
     getAllApplication: async (_, __, context) => {
-      const user = await context.authentication();
+      await context.authentication();
       return await Application.find();
     },
     getApplicationById: async (_, { _id }, context) => {
-      const user = await context.authentication();
+      await context.authentication();
       const result = await Application.findById(_id);
       if (!result) throw new Error("Application not found");
       return result;
@@ -81,39 +90,29 @@ export const resolvers = {
   },
 
   Mutation: {
-    createApplication: async (
-      _,
-      {
-        ownerId,
-        collectionId,
-        jobTitle,
-        organization,
-        location,
-        salary,
-        type,
-        startDate,
-        endDate,
-      },
-      context,
-    ) => {
+    createApplication: async (_, args, context) => {
       const user = await context.authentication();
 
       const newApplication = new Application({
         ownerId: user._id,
-        collectionId,
-        jobTitle,
-        organization,
-        location,
-        salary,
-        type,
-        startDate,
-        endDate,
+        collectionId: args.collectionId || null,
+        jobTitle: args.jobTitle,
+        description: args.description,
+        organizationName: args.organizationName,
+        organizationAddress: args.organizationAddress,
+        organizationLogo: args.organizationLogo,
+        location: args.location,
+        salary: args.salary,
+        type: args.type,
+        startDate: args.startDate,
+        endDate: args.endDate,
       });
+
       return await newApplication.save();
     },
 
     deleteApplication: async (_, { _id }, context) => {
-      const user = await context.authentication();
+      await context.authentication();
       const result = await Application.findByIdAndDelete(_id);
       if (!result) throw new Error("Application not found");
       return result;
@@ -121,9 +120,12 @@ export const resolvers = {
 
     updateApplication: async (_, { _id, ...updateData }, context) => {
       const user = await context.authentication();
+      updateData.ownerId = user._id;
+
       const result = await Application.findByIdAndUpdate(_id, updateData, {
         new: true,
       });
+
       if (!result) throw new Error("Application not found");
       return result;
     },
