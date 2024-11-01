@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 type Payload = {
-  id: string;
+  _id: string;
   username: string;
   email: string;
 };
@@ -13,5 +13,6 @@ export const signToken = (payload: Payload) => {
 };
 
 export const verifyToken = (token: string) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  return decoded as Payload
 };
