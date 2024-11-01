@@ -110,17 +110,18 @@ export const resolvers = {
       return await newApplication.save();
     },
 
-    deleteApplication: async (_, { id }) => {
-      const result = await Application.findByIdAndDelete(id);
+    deleteApplication: async (_, { _id }, context) => {
+      const user = await context.authentication();
+      const result = await Application.findByIdAndDelete(_id);
       if (!result) throw new Error("Application not found");
       return result;
     },
 
-    updateApplication: async (_, { id, ...updateData }) => {
+    updateApplication: async (_, { id, ...updateData }, context) => {
       const result = await Application.findByIdAndUpdate(id, updateData, {
         new: true,
       });
-      if (!result) throw new Error(`Application with id ${id} not found.`);
+      if (!result) throw new Error(`Application with not found.`);
       return result;
     },
   },
