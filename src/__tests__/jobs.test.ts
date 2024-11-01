@@ -2,10 +2,7 @@ import server from "../server";
 import redis from "../config/redis"; // Adjust the import path as needed
 import assert from "assert";
 
-jest.mock("../config/redis", () => ({
-  get: jest.fn(),
-  set: jest.fn(),
-}));
+jest.mock("../config/redis");
 
 describe("Job Schema", () => {
   it("should return a cached list of job vacancies ", async () => {
