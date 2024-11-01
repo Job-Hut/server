@@ -48,6 +48,19 @@ export const typeDefs = `#graphql
     ): Application
 
     deleteApplication(id: ID!): Application
+
+    updateApplication(
+      id: ID!
+      ownerId: String
+      collectionId: ID
+      jobTitle: String
+      organization: String
+      location: String
+      salary: Int
+      type: String
+      startDate: Date
+      endDate: Date
+    ): Application
   }
 `;
 
@@ -97,6 +110,14 @@ export const resolvers = {
     deleteApplication: async (_, { id }) => {
       const result = await Application.findByIdAndDelete(id);
       if (!result) throw new Error("Application not found");
+      return result;
+    },
+
+    updateApplication: async (_, { id, ...updateData }) => {
+      const result = await Application.findByIdAndUpdate(id, updateData, {
+        new: true,
+      });
+      if (!result) throw new Error(`Application with id ${id} not found.`);
       return result;
     },
   },

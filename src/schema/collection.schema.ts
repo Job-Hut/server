@@ -51,6 +51,7 @@ export const typeDefs = `#graphql
   }
 
   type Collection {
+    id: ID!
     name: String
     description: String
     public: Boolean
@@ -75,9 +76,6 @@ export const typeDefs = `#graphql
       public: Boolean!
       ownerId: String!
       sharedWith: [String]!
-      # applications: [Application]
-      # threads: [Thread]
-      # chat: [Chat]
     ): Collection
 
     deleteCollection(id: ID!): Collection
@@ -88,9 +86,6 @@ export const typeDefs = `#graphql
       description: String
       public: Boolean
       sharedWith: [String]
-      # applications: [ApplicationInput]
-      # threads: [ThreadInput]
-      # chat: [ChatInput]
     ): Collection
   }
 `;
