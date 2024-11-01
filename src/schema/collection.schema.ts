@@ -1,4 +1,5 @@
 import Collection from "../models/collection.model";
+import User from "../models/user.model";
 
 export const typeDefs = `#graphql
   scalar Date
@@ -64,6 +65,14 @@ export const typeDefs = `#graphql
     updatedAt: Date
   }
 
+  input ThreadInput {
+    title: String
+    content: String
+    authorId: String
+    createdAt: String
+    updatedAt: String
+  }
+
   type Query {
     getAllCollection: [Collection]
     getCollectionById(id: ID!): Collection 
@@ -98,7 +107,13 @@ export const typeDefs = `#graphql
       collectionId: ID!
       message: String
     ): Collection
-  }
+
+    addUserToCollection(
+      collectionId: ID!
+      userId: ID!
+    ): Collection
+
+     }
 
   type Subscription {
     newMessage(collectionId: ID!): Chat
@@ -184,6 +199,17 @@ export const resolvers = {
         updatedAt: new Date(),
       });
       await collection.save();
+      return collection;
+    },
+
+    addUserToCollection: async (_, { collectionId, userId }) => {
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+      collection.sharedWith.push(userId);
+      await collection.save();
+      await User.findByIdAndUpdate(userId, {
+        $push: { collections: collectionId },
+      });
       return collection;
     },
   },
