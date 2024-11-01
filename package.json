@@ -10,7 +10,7 @@
     "dev": "concurrently \"npm run build:watch\" \"npm run start:watch\"",
     "test": "jest ./src/**/*.test.ts",
     "test:watch": "jest --watch ./src/**/*.test.ts",
-    "test:coverage": "jest --coverage --runInBand",
+    "test:coverage": "jest --coverage --runInBand ./src/**/*.test.ts",
     "lint": "eslint src",
     "format": "prettier --write src/**/*.ts"
   },
@@ -21,6 +21,7 @@
   "description": "",
   "dependencies": {
     "@apollo/server": "^4.11.0",
+    "@types/bcrypt": "^5.0.2",
     "bcrypt": "^5.1.1",
     "cheerio": "^1.0.0",
     "graphql": "^16.9.0",
