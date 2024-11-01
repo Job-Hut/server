@@ -1,76 +1,70 @@
 import config from "./config/config";
-import mongoose from "mongoose";
-
-import { ApolloServer } from "@apollo/server";
-import * as user from "./schema/user.schema";
-import * as jobs from "./schema/jobs.schema";
-import * as collection from "./schema/collection.schema";
-import * as application from "./schema/application.schema";
-
-import { makeExecutableSchema } from "@graphql-tools/schema";
-import { createServer } from "http";
-import { expressMiddleware } from "@apollo/server/express4";
-import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
-import { WebSocketServer } from "ws";
-import { useServer } from "graphql-ws/lib/use/ws";
 import express from "express";
 import cors from "cors";
-import { verifyToken } from "./helpers/jwt";
-import User from "./models/user.model";
+import { createServer, Server as HttpServer } from "http";
+import { WebSocketServer } from "ws";
 
-const app = express();
-const httpServer = createServer(app);
+// GraphQL imports
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { makeExecutableSchema } from "@graphql-tools/schema";
+import { useServer } from "graphql-ws/lib/use/ws";
 
-const schema = makeExecutableSchema({
-  typeDefs: [
-    user.typeDefs,
-    collection.typeDefs,
-    jobs.typeDefs,
-    application.typeDefs,
-  ],
-  resolvers: [
-    user.resolvers,
-    collection.resolvers,
-    jobs.resolvers,
-    application.resolvers,
-  ],
-});
+// Schema imports
+import { typeDefs, resolvers } from "./schema";
+import { createContext } from "./context";
+import { init as initializeMongoDB } from "./config/mongodb";
+import { GraphQLSchema } from "graphql";
 
-const wsServer = new WebSocketServer({
-  server: httpServer,
-  path: "/subscriptions",
-});
+// Separate schema configuration
+export const createApolloSchema = () =>
+  makeExecutableSchema({ typeDefs, resolvers });
 
-const serverCleanup = useServer({ schema }, wsServer);
+// Separate server configuration
+export const createApolloServer = (
+  schema: GraphQLSchema,
+  httpServer: HttpServer,
+) => {
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/subscriptions",
+  });
 
-export const server = new ApolloServer({
-  schema,
-  introspection: true,
-  plugins: [
-    ApolloServerPluginDrainHttpServer({ httpServer }),
-    {
-      async serverWillStart() {
-        return {
-          async drainServer() {
-            await serverCleanup.dispose();
-          },
-        };
+  const serverCleanup = useServer({ schema }, wsServer);
+
+  return new ApolloServer({
+    schema,
+    introspection: true,
+    plugins: [
+      ApolloServerPluginDrainHttpServer({ httpServer }),
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose();
+            },
+          };
+        },
       },
-    },
-  ],
-});
+    ],
+  });
+};
 
-(async () => {
-  mongoose
-    .connect(config.mongodb.connectionString, {
-      dbName: config.mongodb.database,
-    })
-    .then(() => {
-      console.log("connected to mongodb");
-    })
-    .catch((err) => {
-      console.error(err);
-    });
+// Create HTTP server with Express
+export const createHttpServer = () => {
+  const app = express();
+  const httpServer = createServer(app);
+  return { app, httpServer };
+};
+
+// Main application setup
+export const setupApplication = async () => {
+  const { app, httpServer } = createHttpServer();
+  const schema = createApolloSchema();
+  const server = createApolloServer(schema, httpServer);
+
+  await initializeMongoDB();
   await server.start();
 
   app.use(
@@ -78,22 +72,14 @@ export const server = new ApolloServer({
     cors<cors.CorsRequest>(),
     express.json(),
     expressMiddleware(server, {
-      context: async ({ req }) => {
-        return {
-          authentication: async () => {
-            const authorization = req.headers.authorization;
-            if (!authorization) throw new Error("You have to login first!");
-            const token = authorization.split(" ")[1];
-            if (!token) throw new Error("Invalid Token");
-            const decoded = verifyToken(token);
-            const user = await User.findById(decoded._id);
-            return user;
-          },
-        };
-      },
+      context: createContext,
     }),
   );
+
   httpServer.listen(config.app.port, () => {
     console.log(`Server is running on port ${config.app.port}`);
   });
-})();
+};
+
+// Start the application
+setupApplication().catch(console.error);

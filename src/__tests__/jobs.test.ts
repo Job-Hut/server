@@ -1,8 +1,13 @@
-import server from "../server";
+import { createApolloSchema, createApolloServer, createHttpServer } from "..";
 import redis from "../config/redis"; // Adjust the import path as needed
 import assert from "assert";
 
 jest.mock("../config/redis");
+
+const server = createApolloServer(
+  createApolloSchema(),
+  createHttpServer().httpServer,
+);
 
 describe("Job Schema", () => {
   it("should return a cached list of job vacancies ", async () => {

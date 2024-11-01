@@ -1,5 +1,8 @@
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
+import { PubSub } from "graphql-subscriptions";
+
+const pubsub = new PubSub();
 
 export const typeDefs = `#graphql
   scalar Date
@@ -20,7 +23,7 @@ export const typeDefs = `#graphql
     updatedAt: String
   }
 
-  type Chat {
+  type Message {
     senderId: String
     content: String
     createdAt: String
@@ -36,7 +39,7 @@ export const typeDefs = `#graphql
     sharedWith: [String]
     applications: [Application]
     threads: [Thread]
-    chat: [Chat]
+    chat: [Message]
     createdAt: Date
     updatedAt: Date
   }
@@ -92,7 +95,7 @@ export const typeDefs = `#graphql
      }
 
   type Subscription {
-    newMessage(collectionId: ID!): Chat
+    newMessage(collectionId: ID!): Message
   }
 `;
 
@@ -174,6 +177,9 @@ export const resolvers = {
         updatedAt: new Date(),
       });
       await collection.save();
+      pubsub.publish(`NEW_MESSAGE_${collectionId}`, {
+        newMessage: collection.chat[collection.chat.length - 1],
+      });
       return collection;
     },
 
@@ -186,6 +192,14 @@ export const resolvers = {
         $push: { collections: collectionId },
       });
       return collection;
+    },
+  },
+
+  Subscription: {
+    newMessage: {
+      subscribe: async (_, { collectionId }) => {
+        return pubsub.asyncIterator(`NEW_MESSAGE_${collectionId}`);
+      },
     },
   },
 
