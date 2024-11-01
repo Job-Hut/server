@@ -51,7 +51,7 @@ export const typeDefs = `#graphql
     deleteApplication(_id: ID!): Application
 
     updateApplication(
-      id: ID!
+      _id: ID!
       ownerId: String
       collectionId: ID
       jobTitle: String
@@ -117,11 +117,12 @@ export const resolvers = {
       return result;
     },
 
-    updateApplication: async (_, { id, ...updateData }, context) => {
-      const result = await Application.findByIdAndUpdate(id, updateData, {
+    updateApplication: async (_, { _id, ...updateData }, context) => {
+      const user = await context.authentication();
+      const result = await Application.findByIdAndUpdate(_id, updateData, {
         new: true,
       });
-      if (!result) throw new Error(`Application with not found.`);
+      if (!result) throw new Error("Application not found");
       return result;
     },
   },
