@@ -46,6 +46,8 @@ export const typeDefs = `#graphql
       startDate: Date
       endDate: Date
     ): Application
+
+    deleteApplication(id: ID!): Application
   }
 `;
 
@@ -90,6 +92,12 @@ export const resolvers = {
         endDate,
       });
       return await newApplication.save();
+    },
+
+    deleteApplication: async (_, { id }) => {
+      const result = await Application.findByIdAndDelete(id);
+      if (!result) throw new Error("Application not found");
+      return result;
     },
   },
 };
