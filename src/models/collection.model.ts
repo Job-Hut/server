@@ -53,7 +53,7 @@ const collectionSchema = new mongoose.Schema({
   public: { type: Boolean, required: true },
   ownerId: { type: String, required: true },
   sharedWith: { type: [String], required: true },
-  applications: [applicationSchema],
+  applications: [applicationSchema], //ganti [string]
   threads: [threadSchema],
   chat: [chatSchema],
   createdAt: { type: Date, default: Date.now },
