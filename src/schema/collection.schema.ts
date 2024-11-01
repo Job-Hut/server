@@ -1,31 +1,11 @@
 import Collection from "../models/collection.model";
+import User from "../models/user.model";
+import { PubSub } from "graphql-subscriptions";
+
+const pubsub = new PubSub();
 
 export const typeDefs = `#graphql
   scalar Date
-
-  type Task {
-    title: String
-    description: String
-    completed: Boolean
-    dueDate: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  type Application {
-    ownerId: String
-    collectionId: String
-    jobTitle: String
-    organization: String
-    location: String
-    salary: Int
-    type: String
-    tasks: [Task]
-    startDate: String
-    endDate: String
-    createdAt: String
-    updatedAt: String
-  }
 
   type Reply {
     authorId: String
@@ -43,7 +23,7 @@ export const typeDefs = `#graphql
     updatedAt: String
   }
 
-  type Chat {
+  type Message {
     senderId: String
     content: String
     createdAt: String
@@ -51,6 +31,7 @@ export const typeDefs = `#graphql
   }
 
   type Collection {
+    _id: ID!
     name: String
     description: String
     public: Boolean
@@ -58,9 +39,17 @@ export const typeDefs = `#graphql
     sharedWith: [String]
     applications: [Application]
     threads: [Thread]
-    chat: [Chat]
+    chat: [Message]
     createdAt: Date
     updatedAt: Date
+  }
+
+  input ThreadInput {
+    title: String
+    content: String
+    authorId: String
+    createdAt: String
+    updatedAt: String
   }
 
   type Query {
@@ -92,6 +81,21 @@ export const typeDefs = `#graphql
       # threads: [ThreadInput]
       # chat: [ChatInput]
     ): Collection
+
+    addMessageToChat(
+      collectionId: ID!
+      message: String
+    ): Collection
+
+    addUserToCollection(
+      collectionId: ID!
+      userId: ID!
+    ): Collection
+
+     }
+
+  type Subscription {
+    newMessage(collectionId: ID!): Message
   }
 `;
 
@@ -110,16 +114,7 @@ export const resolvers = {
   Mutation: {
     createCollection: async (
       _,
-      {
-        name,
-        description,
-        public: publicValue,
-        ownerId,
-        sharedWith,
-        // applications,
-        // threads,
-        // chat,
-      },
+      { name, description, public: publicValue, ownerId },
     ) => {
       if (typeof publicValue !== "boolean") {
         throw new Error("Public is required and must be a boolean");
@@ -130,10 +125,6 @@ export const resolvers = {
         description,
         public: publicValue,
         ownerId,
-        sharedWith,
-        // applications: [],
-        // threads: [],
-        // chat: [],
       });
       return await newCollection.save();
     },
@@ -174,5 +165,43 @@ export const resolvers = {
 
       return await Collection.findByIdAndUpdate(id, updateData, { new: true });
     },
+
+    addMessageToChat: async (_, { collectionId, message }, context) => {
+      const loggedUser = await context.authentication();
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+      collection.chat.push({
+        senderId: loggedUser._id,
+        content: message,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await collection.save();
+      pubsub.publish(`NEW_MESSAGE_${collectionId}`, {
+        newMessage: collection.chat[collection.chat.length - 1],
+      });
+      return collection;
+    },
+
+    addUserToCollection: async (_, { collectionId, userId }) => {
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+      collection.sharedWith.push(userId);
+      await collection.save();
+      await User.findByIdAndUpdate(userId, {
+        $push: { collections: collectionId },
+      });
+      return collection;
+    },
   },
+
+  Subscription: {
+    newMessage: {
+      subscribe: async (_, { collectionId }) => {
+        return pubsub.asyncIterator(`NEW_MESSAGE_${collectionId}`);
+      },
+    },
+  },
+
+  // add bulk insert application [application]
 };

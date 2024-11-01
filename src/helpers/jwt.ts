@@ -1,17 +1,17 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
+import config from "../config/config";
 
 type Payload = {
-  id: string;
+  _id: string;
   username: string;
   email: string;
 };
 
 export const signToken = (payload: Payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET);
+  return jwt.sign(payload, config.app.secret);
 };
 
 export const verifyToken = (token: string) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  const decoded = jwt.verify(token, config.app.secret);
+  return decoded as Payload;
 };
