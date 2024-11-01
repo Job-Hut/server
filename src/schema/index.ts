@@ -22,9 +22,9 @@ export const typeDefs = [
   applicationTypeDefs,
 ];
 
-export const resolvers = {
-  ...collectionResolvers,
-  ...userResolvers,
-  ...jobsResolvers,
-  ...applicationResolvers,
-};
+export const resolvers = [
+  collectionResolvers,
+  userResolvers,
+  jobsResolvers,
+  applicationResolvers,
+];
