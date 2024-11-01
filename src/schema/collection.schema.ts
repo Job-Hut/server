@@ -1,31 +1,8 @@
 import Collection from "../models/collection.model";
+import User from "../models/user.model";
 
 export const typeDefs = `#graphql
   scalar Date
-
-  type Task {
-    title: String
-    description: String
-    completed: Boolean
-    dueDate: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  type Application {
-    ownerId: String
-    collectionId: String
-    jobTitle: String
-    organization: String
-    location: String
-    salary: Int
-    type: String
-    tasks: [Task]
-    startDate: String
-    endDate: String
-    createdAt: String
-    updatedAt: String
-  }
 
   type Reply {
     authorId: String
@@ -51,7 +28,7 @@ export const typeDefs = `#graphql
   }
 
   type Collection {
-    _id: ID
+    _id: ID!
     name: String
     description: String
     public: Boolean
@@ -62,6 +39,14 @@ export const typeDefs = `#graphql
     chat: [Chat]
     createdAt: Date
     updatedAt: Date
+  }
+
+  input ThreadInput {
+    title: String
+    content: String
+    authorId: String
+    createdAt: String
+    updatedAt: String
   }
 
   type Query {
@@ -98,7 +83,13 @@ export const typeDefs = `#graphql
       collectionId: ID!
       message: String
     ): Collection
-  }
+
+    addUserToCollection(
+      collectionId: ID!
+      userId: ID!
+    ): Collection
+
+     }
 
   type Subscription {
     newMessage(collectionId: ID!): Chat
@@ -120,7 +111,7 @@ export const resolvers = {
   Mutation: {
     createCollection: async (
       _,
-      { name, description, public: publicValue, ownerId, sharedWith },
+      { name, description, public: publicValue, ownerId },
     ) => {
       if (typeof publicValue !== "boolean") {
         throw new Error("Public is required and must be a boolean");
@@ -131,7 +122,6 @@ export const resolvers = {
         description,
         public: publicValue,
         ownerId,
-        sharedWith,
       });
       return await newCollection.save();
     },
@@ -186,5 +176,18 @@ export const resolvers = {
       await collection.save();
       return collection;
     },
+
+    addUserToCollection: async (_, { collectionId, userId }) => {
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+      collection.sharedWith.push(userId);
+      await collection.save();
+      await User.findByIdAndUpdate(userId, {
+        $push: { collections: collectionId },
+      });
+      return collection;
+    },
   },
+
+  // add bulk insert application [application]
 };

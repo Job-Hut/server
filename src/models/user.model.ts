@@ -29,6 +29,12 @@ const userSchema = new mongoose.Schema(
     profile: {
       type: profileSchema,
     },
+    collections: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Collection",
+      },
+    ],
   },
   { timestamps: true },
 );
@@ -110,10 +116,10 @@ export async function addExperience(input: ExperienceInput, userId: string) {
   if (!userProfile) throw new Error("User not found");
 
   if (input) {
-      const { jobTitle, institute, startDate, endDate } = input
-      if (jobTitle && institute && startDate) { 
-        userProfile.profile.experiences.push({ jobTitle, institute, startDate, endDate });
-      } 
+    const { jobTitle, institute, startDate, endDate } = input
+    if (jobTitle && institute && startDate) {
+      userProfile.profile.experiences.push({ jobTitle, institute, startDate, endDate });
+    }
   }
 
   await userProfile.save();

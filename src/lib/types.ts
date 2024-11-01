@@ -47,7 +47,8 @@ export interface User {
   email: string;
   password: string;
   profile: Profile;
-  collections: Collection[];
+  collections: Collection | ObjectId[];
+  lastSeen: Date;
   createdAt: Date;
   updatedAt: Date;
 }
