@@ -138,7 +138,11 @@ export const resolvers = {
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
-      return await User.findById(userId);
+      const user = await User.findById(userId);
+      if(!user) {
+        throw new Error("No User Found")
+      }
+      return user;
     },
     getAuthenticatedUser: async (_: unknown, __: unknown, context) => {
       const loggedUser = await context.authentication();
