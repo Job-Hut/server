@@ -2,30 +2,6 @@ import mongoose from "mongoose";
 import Application from "./application.model";
 import User from "./user.model";
 
-// const taskSchema = new mongoose.Schema({
-//   title: { type: String, required: true },
-//   description: { type: String, required: true },
-//   completed: { type: Boolean, required: true },
-//   dueDate: { type: Date, required: true },
-//   createdAt: { type: Date, default: Date.now },
-//   updatedAt: { type: Date, default: Date.now },
-// });
-
-// const applicationSchema = new mongoose.Schema({
-//   ownerId: { type: String, required: true },
-//   collectionId: { type: String, required: true },
-//   jobTitle: { type: String, required: true },
-//   organization: { type: String, required: true },
-//   location: { type: String, required: true },
-//   salary: { type: Number, required: true },
-//   type: { type: String, required: true },
-//   tasks: [taskSchema],
-//   startDate: { type: Date, default: Date.now },
-//   endDate: { type: Date, default: Date.now },
-//   createdAt: { type: Date, default: Date.now },
-//   updatedAt: { type: Date, default: Date.now },
-// });
-
 const replySchema = new mongoose.Schema({
   authorId: { type: String, required: true },
   content: { type: String, required: true },
@@ -49,22 +25,9 @@ const chatSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-// const collectionSchema = new mongoose.Schema({
-//   name: { type: String, required: true },
-//   description: { type: String, required: true },
-//   public: { type: Boolean, required: true },
-//   ownerId: { type: String, required: true },
-//   sharedWith: { type: [String], required: true },
-//   applications: [applicationSchema],
-//   threads: [threadSchema],
-//   chat: [chatSchema],
-//   createdAt: { type: Date, default: Date.now },
-//   updatedAt: { type: Date, default: Date.now },
-// });
-
 const collectionSchema = new mongoose.Schema({
-  name: { type: String, default: null },
-  description: { type: String, default: null },
+  name: { type: String, default: "" },
+  description: { type: String, default: "" },
   public: { type: Boolean, default: false },
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -73,19 +36,19 @@ const collectionSchema = new mongoose.Schema({
   },
   sharedWith: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    default: null,
+    default: [],
   },
   applications: {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Application" }],
-    default: null,
+    default: [],
   },
   threads: {
     type: [threadSchema],
-    default: null,
+    default: [],
   },
   chat: {
     type: [chatSchema],
-    default: null,
+    default: [],
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

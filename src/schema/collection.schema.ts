@@ -1,3 +1,4 @@
+import Application from "../models/application.model";
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
 import { PubSub } from "graphql-subscriptions";
@@ -29,20 +30,6 @@ export const typeDefs = `#graphql
     createdAt: String
     updatedAt: String
   }
-
-  # type Collection {
-  #   _id: ID!
-  #   name: String
-  #   description: String
-  #   public: Boolean
-  #   ownerId: String
-  #   sharedWith: [String]
-  #   applications: [Application]
-  #   threads: [Thread]
-  #   chat: [Message]
-  #   createdAt: Date
-  #   updatedAt: Date
-  # }
 
   type Collection {
     _id: ID!
@@ -97,6 +84,15 @@ export const typeDefs = `#graphql
       userId: ID!
     ): Collection
 
+    addApplicationsToCollection(
+      collectionId: ID!
+      applicationIds: [ID!]!
+    ): Collection
+
+    removeApplicationFromCollection(
+      collectionId: ID!
+      applicationId: ID!
+    ): Collection
   }
 
   type Subscription {
@@ -210,6 +206,62 @@ export const resolvers = {
       });
       return collection;
     },
+
+    addApplicationsToCollection: async (
+      _,
+      { collectionId, applicationIds },
+      context,
+    ) => {
+      const user = await context.authentication();
+
+      const collection = await Collection.findOne({
+        _id: collectionId,
+        ownerId: user._id,
+      });
+      if (!collection)
+        throw new Error(
+          "Collection not found or you do not have permission to update it.",
+        );
+
+      const applications = await Application.find({
+        _id: { $in: applicationIds },
+        ownerId: user._id,
+      });
+      if (applications.length !== applicationIds.length) {
+        throw new Error(
+          "One or more applications are not owned by the current user.",
+        );
+      }
+
+      collection.applications.push(...applicationIds);
+      await collection.save();
+      return collection;
+    },
+
+    removeApplicationFromCollection: async (
+      _,
+      { collectionId, applicationId },
+      context,
+    ) => {
+      const user = await context.authentication();
+
+      const collection = await Collection.findById(collectionId);
+      if (!collection) {
+        throw new Error("Collection not found");
+      }
+
+      if (!collection.ownerId.equals(user._id)) {
+        throw new Error(
+          "You are not authorized to remove applications from this collection",
+        );
+      }
+
+      collection.applications = collection.applications.filter(
+        (appId) => !appId.equals(applicationId),
+      );
+      await collection.save();
+      return collection;
+    },
   },
 
   Subscription: {
@@ -219,6 +271,4 @@ export const resolvers = {
       },
     },
   },
-
-  // add bulk insert application [application]
 };
