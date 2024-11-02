@@ -39,59 +39,33 @@ export const typeDefs = `#graphql
     dueDate: Date
   }
 
+  input ApplicationInput {
+    collectionId: ID
+    jobTitle: String
+    description: String
+    organizationName: String
+    organizationAddress: String
+    organizationLogo: String
+    location: String
+    salary: Int
+    type: String
+    startDate: Date
+    endDate: Date
+  }
+
   type Query {
     getAllApplication: [Application]
     getApplicationById(_id: ID!): Application
+    getTasksGeneratedByAi(_id: ID!): [Task]
   }
 
   type Mutation {
-    createApplication(
-      ownerId: ID!
-      collectionId: ID
-      jobTitle: String
-      description: String
-      organizationName: String
-      organizationAddress: String
-      organizationLogo: String
-      location: String
-      salary: Int
-      type: String
-      startDate: Date
-      endDate: Date
-    ): Application
-
+    createApplication(input: ApplicationInput): Application
     deleteApplication(_id: ID!): Application
-
-    updateApplication(
-      _id: ID!
-      collectionId: ID
-      jobTitle: String
-      description: String
-      organizationName: String
-      organizationAddress: String
-      organizationLogo: String
-      location: String
-      salary: Int
-      type: String
-      startDate: Date
-      endDate: Date
-    ): Application
-
-    addTaskToApplication(
-      applicationId: ID!,
-      task: TaskInput
-    ): Application
-
-    deleteTaskFromApplication(
-      applicationId: ID!,
-      taskId: ID!
-    ): Application
-
-    updateTaskInApplication(
-      applicationId: ID!,
-      taskId: ID!,
-      task: TaskInput
-    ): Application
+    updateApplication(_id: ID!, input: ApplicationInput): Application
+    addTaskToApplication(applicationId: ID!, task: TaskInput): Application
+    deleteTaskFromApplication(applicationId: ID!, taskId: ID!): Application
+    updateTaskInApplication(applicationId: ID!, taskId: ID!, task: TaskInput): Application
   }
 `;
 
@@ -115,17 +89,7 @@ export const resolvers = {
 
       const newApplication = new Application({
         ownerId: user._id,
-        collectionId: args.collectionId || null,
-        jobTitle: args.jobTitle,
-        description: args.description,
-        organizationName: args.organizationName,
-        organizationAddress: args.organizationAddress,
-        organizationLogo: args.organizationLogo,
-        location: args.location,
-        salary: args.salary,
-        type: args.type,
-        startDate: args.startDate,
-        endDate: args.endDate,
+        ...args.input,
       });
 
       return await newApplication.save();
@@ -138,11 +102,10 @@ export const resolvers = {
       return result;
     },
 
-    updateApplication: async (_, { _id, ...updateData }, context) => {
-      const user = await context.authentication();
-      updateData.ownerId = user._id;
+    updateApplication: async (_, { _id, input }, context) => {
+      await context.authentication();
 
-      const result = await Application.findByIdAndUpdate(_id, updateData, {
+      const result = await Application.findByIdAndUpdate(_id, input, {
         new: true,
       });
 
