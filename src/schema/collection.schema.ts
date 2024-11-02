@@ -30,14 +30,28 @@ export const typeDefs = `#graphql
     updatedAt: String
   }
 
+  # type Collection {
+  #   _id: ID!
+  #   name: String
+  #   description: String
+  #   public: Boolean
+  #   ownerId: String
+  #   sharedWith: [String]
+  #   applications: [Application]
+  #   threads: [Thread]
+  #   chat: [Message]
+  #   createdAt: Date
+  #   updatedAt: Date
+  # }
+
   type Collection {
     _id: ID!
     name: String
     description: String
-    public: Boolean
-    ownerId: String
-    sharedWith: [String]
-    applications: [Application]
+    public: Boolean!
+    ownerId: ID!
+    sharedWith: [ID]
+    applications: [ID]
     threads: [Thread]
     chat: [Message]
     createdAt: Date
