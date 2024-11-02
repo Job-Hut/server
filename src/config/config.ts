@@ -18,6 +18,10 @@ const config = {
     host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || 6379,
   },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || "YOUR_API_KEY",
+    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+  },
 };
 
 export default config;
