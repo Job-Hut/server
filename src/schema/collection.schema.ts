@@ -53,6 +53,12 @@ export const typeDefs = `#graphql
     updatedAt: String
   }
 
+  input CollectionInput {
+    name: String
+    description: String
+    public: Boolean!
+  }
+
   type Query {
     getAllCollection: [Collection]
     getCollectionById(id: ID!): Collection 
@@ -60,18 +66,14 @@ export const typeDefs = `#graphql
 
   type Mutation {
     createCollection(
-      name: String
-      description: String
-      public: Boolean!
+      input: CollectionInput
     ): Collection
 
     deleteCollection(id: ID!): Collection
 
     updateCollection(
       id: ID!
-      name: String
-      description: String
-      public: Boolean!
+      input: CollectionInput
     ): Collection
 
     addMessageToChat(
@@ -79,9 +81,14 @@ export const typeDefs = `#graphql
       message: String
     ): Collection
 
-    addUserToCollection(
+    addUsersToCollection(
       collectionId: ID!
-      userId: ID!
+      userIds: [ID!]!
+    ): Collection
+
+    removeUsersFromCollection(
+      collectionId: ID!
+      userIds: [ID]!
     ): Collection
 
     addApplicationsToCollection(
@@ -123,17 +130,11 @@ export const resolvers = {
   },
 
   Mutation: {
-    createCollection: async (
-      _,
-      { name, description, public: publicValue },
-      context,
-    ) => {
+    createCollection: async (_, { input }, context) => {
       const user = await context.authentication();
 
       const newCollection = new Collection({
-        name,
-        description,
-        public: publicValue,
+        ...input,
         ownerId: user._id,
       });
 
@@ -144,6 +145,11 @@ export const resolvers = {
       const user = await context.authentication();
       const collection = await Collection.findByIdAndDelete(id);
 
+      await User.updateMany(
+        { _id: { $in: collection.sharedWith } },
+        { $pull: { collections: id } },
+      );
+
       if (!collection) throw new Error("Collection not found");
 
       if (!collection.ownerId.equals(user._id)) {
@@ -152,11 +158,7 @@ export const resolvers = {
       return collection;
     },
 
-    updateCollection: async (
-      _,
-      { id, name, description, public: publicValue },
-      context,
-    ) => {
+    updateCollection: async (_, { id, input }, context) => {
       const user = await context.authentication();
       const collection = await Collection.findById(id);
 
@@ -170,13 +172,7 @@ export const resolvers = {
         );
       }
 
-      const updateData = {
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(publicValue !== undefined && { public: publicValue }),
-      };
-
-      return await Collection.findByIdAndUpdate(id, updateData, { new: true });
+      return await Collection.findByIdAndUpdate(id, input, { new: true });
     },
 
     addMessageToChat: async (_, { collectionId, message }, context) => {
@@ -196,14 +192,34 @@ export const resolvers = {
       return collection;
     },
 
-    addUserToCollection: async (_, { collectionId, userId }) => {
+    addUsersToCollection: async (_, { collectionId, userIds }) => {
       const collection = await Collection.findById(collectionId);
       if (!collection) throw new Error("Collection not found");
-      collection.sharedWith.push(userId);
+
+      collection.sharedWith.push(...userIds);
       await collection.save();
-      await User.findByIdAndUpdate(userId, {
-        $push: { collections: collectionId },
+
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $push: { collections: collectionId } },
+      );
+
+      return collection;
+    },
+
+    removeUsersFromCollection: async (_, { collectionId, userIds }) => {
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+
+      await Collection.findByIdAndUpdate(collectionId, {
+        $pull: { sharedWith: { $in: userIds } },
       });
+
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $pull: { collections: collectionId } },
+      );
+
       return collection;
     },
 
