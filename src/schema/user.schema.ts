@@ -24,19 +24,20 @@ export const typeDefs = `#graphql
   scalar Date
 
   type User {
-    _id: String!
+    _id: ID!
     username: String!
     avatar: String
     fullName: String!
     email: String!
     password: String!
     profile: Profile
+    collections: [ID]
     createdAt: Date
     updatedAt: Date
   }
 
   type Profile {
-    _id: String!
+    _id: ID!
     bio: String
     location: String
     experiences: [Experience]
@@ -47,7 +48,7 @@ export const typeDefs = `#graphql
   }
 
   type Experience {
-    _id: String!
+    _id: ID!
     jobTitle: String!
     institute: String!
     startDate: Date!
@@ -55,7 +56,7 @@ export const typeDefs = `#graphql
   }
 
   type Education {
-    _id: String!
+    _id: ID!
     name: String!
     institute: String!
     startDate: String!
@@ -63,7 +64,7 @@ export const typeDefs = `#graphql
   }
 
   type License {
-    _id: String!
+    _id: ID!
     number: String!
     name: String!
     issuedBy: String!
@@ -139,8 +140,8 @@ export const resolvers = {
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
       const user = await User.findById(userId);
-      if(!user) {
-        throw new Error("No User Found")
+      if (!user) {
+        throw new Error("No User Found");
       }
       return user;
     },
