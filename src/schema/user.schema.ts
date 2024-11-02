@@ -109,7 +109,7 @@ export const typeDefs = `#graphql
   }
   
   type Query {
-    getUsers: [User]
+    getAllUsers: [User]
     getUserById(userId: String!): User
     getAuthenticatedUser: User
   }
@@ -134,7 +134,7 @@ export const typeDefs = `#graphql
 
 export const resolvers = {
   Query: {
-    getUsers: async () => {
+    getAllUsers: async () => {
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
