@@ -73,11 +73,11 @@ export const typeDefs = `#graphql
 
   type Mutation {
     createCollection(
-      name: String!
-      description: String!
+      name: String
+      description: String
       public: Boolean!
       ownerId: String!
-      sharedWith: [String]!
+      # sharedWith: [String]!
       # applications: [Application]
       # threads: [Thread]
       # chat: [Chat]
@@ -89,8 +89,8 @@ export const typeDefs = `#graphql
       id: ID!
       name: String
       description: String
-      public: Boolean
-      sharedWith: [String]
+      public: Boolean!
+      # sharedWith: [String]
       # applications: [ApplicationInput]
       # threads: [ThreadInput]
       # chat: [ChatInput]
@@ -106,7 +106,7 @@ export const typeDefs = `#graphql
       userId: ID!
     ): Collection
 
-     }
+  }
 
   type Subscription {
     newMessage(collectionId: ID!): Message
@@ -128,18 +128,18 @@ export const resolvers = {
   Mutation: {
     createCollection: async (
       _,
-      { name, description, public: publicValue, ownerId },
+      { name, description, public: publicValue },
+      context,
     ) => {
-      if (typeof publicValue !== "boolean") {
-        throw new Error("Public is required and must be a boolean");
-      }
+      const user = await context.authentication();
 
       const newCollection = new Collection({
         name,
         description,
         public: publicValue,
-        ownerId,
+        ownerId: user._id,
       });
+
       return await newCollection.save();
     },
 
@@ -156,7 +156,7 @@ export const resolvers = {
         name,
         description,
         public: publicValue,
-        sharedWith,
+        // sharedWith,
         // applications,
         // threads,
         // chat,
@@ -171,7 +171,7 @@ export const resolvers = {
         ...(name && { name }),
         ...(description && { description }),
         ...(publicValue !== undefined && { public: publicValue }),
-        ...(sharedWith && { sharedWith }),
+        // ...(sharedWith && { sharedWith }),
         // ...(applications && { applications }),
         // ...(threads && { threads }),
         // ...(chat && { chat }),
