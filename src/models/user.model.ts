@@ -205,7 +205,6 @@ export async function deleteEducation(educationId: string, userId: string) {
 
 export async function addLicense(input: LicenseInput, userId: string) {
   const userProfile = await User.findById(userId);
-  console.log(userProfile);
   if (!userProfile) throw new Error("User not found");
 
   if (input) {
