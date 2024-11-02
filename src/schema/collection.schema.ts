@@ -106,13 +106,23 @@ export const typeDefs = `#graphql
 
 export const resolvers = {
   Query: {
-    getAllCollection: async () => {
-      return await Collection.find();
+    getAllCollection: async (_, __, context) => {
+      const user = await context.authentication();
+      return await Collection.find({ ownerId: user._id });
     },
-    getCollectionById: async (_, { id }) => {
-      const result = await Collection.findById(id);
-      if (!result) throw new Error("Collection not found");
-      return result;
+
+    getCollectionById: async (_, { id }, context) => {
+      const user = await context.authentication();
+      const collection = await Collection.findOne({
+        _id: id,
+        ownerId: user._id,
+      });
+      if (!collection)
+        throw new Error(
+          "Collection not found or you do not have permission to view it.",
+        );
+
+      return collection;
     },
   },
 
@@ -136,14 +146,14 @@ export const resolvers = {
 
     deleteCollection: async (_, { id }, context) => {
       const user = await context.authentication();
-      const result = await Collection.findByIdAndDelete(id);
+      const collection = await Collection.findByIdAndDelete(id);
 
-      if (!result) throw new Error("Collection not found");
+      if (!collection) throw new Error("Collection not found");
 
-      if (!result.ownerId.equals(user._id)) {
+      if (!collection.ownerId.equals(user._id)) {
         throw new Error("You do not have permission to delete this collection");
       }
-      return result;
+      return collection;
     },
 
     updateCollection: async (
@@ -155,7 +165,7 @@ export const resolvers = {
       const collection = await Collection.findById(id);
 
       if (!collection) {
-        throw new Error(`Collection not found.`);
+        throw new Error("Collection not found");
       }
 
       if (!collection.ownerId.equals(user._id)) {
