@@ -6,12 +6,14 @@ import {
   ExperienceInput,
   LicenseInput,
 } from "../helpers/types";
+import validatePassword from "../helpers/validatePassword";
 
 const userSchema = new mongoose.Schema(
   {
     username: {
       type: String,
       required: true,
+      unique: true,
     },
     avatar: {
       type: String,
@@ -70,14 +72,16 @@ export async function register(
       avatar = "";
     }
 
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters long.");
-    }
+    validatePassword(password)
 
     const existingUser = await User.findOne({ email });
-
     if (existingUser) {
       throw new Error("Email already in use.");
+    }
+
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      throw new Error("Username is already taken.");
     }
 
     const hashedPassword = hashPassword(password);
@@ -100,7 +104,6 @@ export async function register(
     });
 
     await newUser.save();
-
     return newUser;
   } catch (error) {
     throw new Error(error.message);
@@ -115,138 +118,88 @@ export async function login(email: string, password: string) {
   return user;
 }
 
-export async function addExperience(input: ExperienceInput, userId: string) {
+type Input = {
+  _id?: string;
+} & (ExperienceInput | EducationInput | LicenseInput | { _id: string });
+
+
+async function updateProfileField(userId: string, input: Input, field: string, action: string, requiredFields: string[]) {
   const userProfile = await User.findById(userId);
   if (!userProfile) throw new Error("User not found");
 
   if (input) {
-    const { jobTitle, institute, startDate, endDate } = input;
-    if (jobTitle && institute && startDate) {
-      userProfile.profile.experiences.push({
-        jobTitle,
-        institute,
-        startDate,
-        endDate,
-      });
+    const missingFields = requiredFields.filter(field => !input[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Required fields missing: ${missingFields.join(', ')}`);
+    }
+
+    switch (action) {
+      case "add":
+        userProfile.profile[field].push(input);
+        break;
+      case "update":
+        await User.findOneAndUpdate(
+          { _id: userId, [`profile.${field}._id`]: input._id },
+          { $set: { [`profile.${field}.$`]: input } },
+          { new: true }
+        );
+        break;
+      case "delete":
+        await User.findByIdAndUpdate(
+          userId,
+          { $pull: { [`profile.${field}`]: { _id: input._id } } },
+          { new: true }
+        );
+        break;
+      default:
+        throw new Error("Invalid action");
     }
   }
 
-  await userProfile.save();
-  return userProfile.profile;
+  await userProfile.save().catch(error => {
+    console.error("Database save error:", error);
+    throw new Error("Failed to save user. Please try again later.");
+  });
+
+  const updatedUserProfile = await User.findById(userId).select(`profile`);
+
+  return updatedUserProfile.profile;
 }
 
-export async function updateExperience(
-  experienceId: string,
-  input: ExperienceInput,
-  userId: string,
-) {
-  await User.findOneAndUpdate(
-    { _id: userId, "profile.experiences._id": experienceId },
-    { $set: { "profile.experiences.$": input } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+export async function addExperience(input: ExperienceInput, userId: string) {
+  return updateProfileField(userId, input, "experiences", "add", ["jobTitle", "institute", "startDate"]);
+}
+
+export async function updateExperience(experienceId: string, input: ExperienceInput, userId: string) {
+  return updateProfileField(userId, { ...input, _id: experienceId }, "experiences", "update", ["jobTitle", "institute", "startDate"]);
 }
 
 export async function deleteExperience(experienceId: string, userId: string) {
-  await User.findByIdAndUpdate(
-    userId,
-    { $pull: { "profile.experiences": { _id: experienceId } } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+  return updateProfileField(userId, { _id: experienceId }, "experiences", "delete", []);
 }
 
 export async function addEducation(input: EducationInput, userId: string) {
-  const userProfile = await User.findById(userId);
-  if (!userProfile) throw new Error("User not found");
-
-  if (input) {
-    const { name, institute, startDate, endDate } = input;
-    if (name && institute && startDate) {
-      userProfile.profile.education.push({
-        name,
-        institute,
-        startDate,
-        endDate,
-      });
-    }
-  }
-
-  await userProfile.save();
-  return userProfile.profile;
+  return updateProfileField(userId, input, "education", "add", ["name", "institute", "startDate"]);
 }
 
-export async function updateEducation(
-  educationId: string,
-  input: EducationInput,
-  userId: string,
-) {
-  await User.findOneAndUpdate(
-    { _id: userId, "profile.education._id": educationId },
-    { $set: { "profile.education.$": input } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+export async function updateEducation(educationId: string, input: EducationInput, userId: string) {
+  return updateProfileField(userId, { ...input, _id: educationId }, "education", "update", ["name", "institute", "startDate"]);
 }
 
 export async function deleteEducation(educationId: string, userId: string) {
-  await User.findByIdAndUpdate(
-    userId,
-    { $pull: { "profile.education": { _id: educationId } } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+  return updateProfileField(userId, { _id: educationId }, "education", "delete", []);
 }
 
 export async function addLicense(input: LicenseInput, userId: string) {
-  const userProfile = await User.findById(userId);
-  console.log(userProfile);
-  if (!userProfile) throw new Error("User not found");
-
-  if (input) {
-    const { number, name, issuedBy, issuedAt, expiryDate } = input;
-    if (number && name && issuedBy && issuedAt) {
-      userProfile.profile.licenses.push({
-        number,
-        name,
-        issuedBy,
-        issuedAt,
-        expiryDate,
-      });
-    }
-  }
-
-  await userProfile.save();
-  return userProfile.profile;
+  return updateProfileField(userId, input, "licenses", "add", ["number", "name", "issuedBy", "issuedAt"]);
 }
 
-export async function updateLicense(
-  licenseId: string,
-  input: LicenseInput,
-  userId: string,
-) {
-  await User.findOneAndUpdate(
-    { _id: userId, "profile.license._id": licenseId },
-    { $set: { "profile.license.$": input } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+export async function updateLicense(licenseId: string, input: LicenseInput, userId: string) {
+  return updateProfileField(userId, { ...input, _id: licenseId }, "licenses", "update", ["number", "name", "issuedBy", "issuedAt"]);
 }
 
 export async function deleteLicense(licenseId: string, userId: string) {
-  await User.findByIdAndUpdate(
-    userId,
-    { $pull: { "profile.license": { _id: licenseId } } },
-    { new: true },
-  );
-  const updatedUser = await User.findById(userId).select("profile");
-  return updatedUser?.profile;
+  return updateProfileField(userId, { _id: licenseId }, "licenses", "delete", []);
 }
 
 export default User;
