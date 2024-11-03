@@ -53,24 +53,6 @@ export interface User {
   updatedAt: Date;
 }
 
-export interface Reply {
-  _id: ObjectId;
-  authorId: ObjectId;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Thread {
-  _id: ObjectId;
-  title: string;
-  content: string;
-  authorId: ObjectId;
-  replies: Reply[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Message {
   _id: ObjectId;
   senderId: ObjectId;
@@ -86,7 +68,6 @@ export interface Collection {
   ownerId: ObjectId;
   sharedWith: User | ObjectId[];
   applications: Application | ObjectId[];
-  threads: Thread[];
   chat: Message[];
   createdAt: Date;
   updatedAt: Date;
