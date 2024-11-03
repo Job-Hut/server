@@ -83,7 +83,6 @@ export interface Collection {
   _id: ObjectId;
   name: string;
   description: string;
-  public: boolean;
   ownerId: ObjectId;
   sharedWith: User | ObjectId[];
   applications: Application | ObjectId[];

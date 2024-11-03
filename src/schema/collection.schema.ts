@@ -35,7 +35,6 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String
     description: String
-    public: Boolean!
     ownerId: ID!
     sharedWith: [ID]
     applications: [ID]
@@ -56,7 +55,6 @@ export const typeDefs = `#graphql
   input CollectionInput {
     name: String
     description: String
-    public: Boolean!
   }
 
   type Query {

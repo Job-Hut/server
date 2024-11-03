@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import Application from "./application.model";
-import User from "./user.model";
 
 const replySchema = new mongoose.Schema({
   authorId: { type: String, required: true },
@@ -28,7 +26,6 @@ const chatSchema = new mongoose.Schema({
 const collectionSchema = new mongoose.Schema({
   name: { type: String, default: "" },
   description: { type: String, default: "" },
-  public: { type: Boolean, default: false },
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
