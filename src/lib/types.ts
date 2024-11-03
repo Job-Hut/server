@@ -132,3 +132,37 @@ export interface JobVacancy {
   salary?: string;
   source: string;
 }
+
+export type RegisterInput = {
+  username: string;
+  avatar: string;
+  fullName: string;
+  email: string;
+  password: string;
+};
+
+export type ExperienceInput = {
+  jobTitle: string;
+  institute: string;
+  startDate: Date;
+  endDate: Date;
+};
+
+export type EducationInput = {
+  name: string;
+  institute: string;
+  startDate: Date;
+  endDate?: Date;
+};
+
+export type LicenseInput = {
+  number: string;
+  name: string;
+  issuedBy: string;
+  issuedAt: Date;
+  expiryDate?: Date;
+};
+
+export type Context = {
+  authentication: () => Promise<User | null>;
+};
