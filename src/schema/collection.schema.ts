@@ -8,22 +8,6 @@ const pubsub = new PubSub();
 export const typeDefs = `#graphql
   scalar Date
 
-  type Reply {
-    authorId: String
-    content: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  type Thread {
-    title: String
-    content: String
-    authorId: String
-    replies: [Reply]
-    createdAt: String
-    updatedAt: String
-  }
-
   type Message {
     senderId: String
     content: String
@@ -35,28 +19,17 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String
     description: String
-    public: Boolean!
     ownerId: ID!
     sharedWith: [ID]
     applications: [ID]
-    threads: [Thread]
     chat: [Message]
     createdAt: Date
     updatedAt: Date
   }
 
-  input ThreadInput {
-    title: String
-    content: String
-    authorId: String
-    createdAt: String
-    updatedAt: String
-  }
-
   input CollectionInput {
     name: String
     description: String
-    public: Boolean!
   }
 
   type Query {
