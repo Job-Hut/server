@@ -1,20 +1,15 @@
 import dotenv from "dotenv";
 import { setupApplication } from "../index";
-import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import redis from "../config/redis";
-
-let mongoServer: MongoMemoryServer;
+import { init } from "../config/mongodb";
 
 dotenv.config({
   path: ".env.test.local",
 });
 
 export const setupTestEnvironment = async () => {
-  // Setup in-memory MongoDB
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-  await mongoose.connect(mongoUri);
+  init();
 
   // Clear Redis cache
   await redis.flushall();
@@ -25,7 +20,7 @@ export const setupTestEnvironment = async () => {
 };
 
 export const teardownTestEnvironment = async () => {
+  await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
-  await mongoServer.stop();
   await redis.quit();
 };

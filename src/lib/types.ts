@@ -53,24 +53,6 @@ export interface User {
   updatedAt: Date;
 }
 
-export interface Reply {
-  _id: ObjectId;
-  authorId: ObjectId;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Thread {
-  _id: ObjectId;
-  title: string;
-  content: string;
-  authorId: ObjectId;
-  replies: Reply[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface Message {
   _id: ObjectId;
   senderId: ObjectId;
@@ -83,11 +65,9 @@ export interface Collection {
   _id: ObjectId;
   name: string;
   description: string;
-  public: boolean;
   ownerId: ObjectId;
   sharedWith: User | ObjectId[];
   applications: Application | ObjectId[];
-  threads: Thread[];
   chat: Message[];
   createdAt: Date;
   updatedAt: Date;
@@ -132,3 +112,37 @@ export interface JobVacancy {
   salary?: string;
   source: string;
 }
+
+export type RegisterInput = {
+  username: string;
+  avatar: string;
+  fullName: string;
+  email: string;
+  password: string;
+};
+
+export type ExperienceInput = {
+  jobTitle: string;
+  institute: string;
+  startDate: Date;
+  endDate: Date;
+};
+
+export type EducationInput = {
+  name: string;
+  institute: string;
+  startDate: Date;
+  endDate?: Date;
+};
+
+export type LicenseInput = {
+  number: string;
+  name: string;
+  issuedBy: string;
+  issuedAt: Date;
+  expiryDate?: Date;
+};
+
+export type Context = {
+  authentication: () => Promise<User | null>;
+};

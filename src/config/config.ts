@@ -22,6 +22,11 @@ const config = {
     apiKey: process.env.GEMINI_API_KEY || "YOUR_API_KEY",
     model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
   },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || "YOUR_CLOUD_NAME",
+    apiKey: process.env.CLOUDINARY_API_KEY || "YOUR_API_KEY",
+    apiSecret: process.env.CLOUDINARY_API_SECRET || "YOUR_API_SECRET",
+  },
 };
 
 export default config;
