@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 import { comparePassword, hashPassword } from "../helpers/bcrypt";
 import { Profile, profileSchema } from "./profile.model";
-import {
-  EducationInput,
-  ExperienceInput,
-  LicenseInput,
-} from "../helpers/types";
+import { EducationInput, ExperienceInput, LicenseInput } from "../lib/types";
 import validatePassword from "../helpers/validatePassword";
 
 const userSchema = new mongoose.Schema(
@@ -72,7 +68,7 @@ export async function register(
       avatar = "";
     }
 
-    validatePassword(password)
+    validatePassword(password);
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -122,15 +118,20 @@ type Input = {
   _id?: string;
 } & (ExperienceInput | EducationInput | LicenseInput | { _id: string });
 
-
-async function updateProfileField(userId: string, input: Input, field: string, action: string, requiredFields: string[]) {
+async function updateProfileField(
+  userId: string,
+  input: Input,
+  field: string,
+  action: string,
+  requiredFields: string[],
+) {
   const userProfile = await User.findById(userId);
   if (!userProfile) throw new Error("User not found");
 
   if (input) {
-    const missingFields = requiredFields.filter(field => !input[field]);
+    const missingFields = requiredFields.filter((field) => !input[field]);
     if (missingFields.length > 0) {
-      throw new Error(`Required fields missing: ${missingFields.join(', ')}`);
+      throw new Error(`Required fields missing: ${missingFields.join(", ")}`);
     }
 
     switch (action) {
@@ -141,14 +142,14 @@ async function updateProfileField(userId: string, input: Input, field: string, a
         await User.findOneAndUpdate(
           { _id: userId, [`profile.${field}._id`]: input._id },
           { $set: { [`profile.${field}.$`]: input } },
-          { new: true }
+          { new: true },
         );
         break;
       case "delete":
         await User.findByIdAndUpdate(
           userId,
           { $pull: { [`profile.${field}`]: { _id: input._id } } },
-          { new: true }
+          { new: true },
         );
         break;
       default:
@@ -156,7 +157,7 @@ async function updateProfileField(userId: string, input: Input, field: string, a
     }
   }
 
-  await userProfile.save().catch(error => {
+  await userProfile.save().catch((error) => {
     console.error("Database save error:", error);
     throw new Error("Failed to save user. Please try again later.");
   });
@@ -167,39 +168,100 @@ async function updateProfileField(userId: string, input: Input, field: string, a
 }
 
 export async function addExperience(input: ExperienceInput, userId: string) {
-  return updateProfileField(userId, input, "experiences", "add", ["jobTitle", "institute", "startDate"]);
+  return updateProfileField(userId, input, "experiences", "add", [
+    "jobTitle",
+    "institute",
+    "startDate",
+  ]);
 }
 
-export async function updateExperience(experienceId: string, input: ExperienceInput, userId: string) {
-  return updateProfileField(userId, { ...input, _id: experienceId }, "experiences", "update", ["jobTitle", "institute", "startDate"]);
+export async function updateExperience(
+  experienceId: string,
+  input: ExperienceInput,
+  userId: string,
+) {
+  return updateProfileField(
+    userId,
+    { ...input, _id: experienceId },
+    "experiences",
+    "update",
+    ["jobTitle", "institute", "startDate"],
+  );
 }
 
 export async function deleteExperience(experienceId: string, userId: string) {
-  return updateProfileField(userId, { _id: experienceId }, "experiences", "delete", []);
+  return updateProfileField(
+    userId,
+    { _id: experienceId },
+    "experiences",
+    "delete",
+    [],
+  );
 }
 
 export async function addEducation(input: EducationInput, userId: string) {
-  return updateProfileField(userId, input, "education", "add", ["name", "institute", "startDate"]);
+  return updateProfileField(userId, input, "education", "add", [
+    "name",
+    "institute",
+    "startDate",
+  ]);
 }
 
-export async function updateEducation(educationId: string, input: EducationInput, userId: string) {
-  return updateProfileField(userId, { ...input, _id: educationId }, "education", "update", ["name", "institute", "startDate"]);
+export async function updateEducation(
+  educationId: string,
+  input: EducationInput,
+  userId: string,
+) {
+  return updateProfileField(
+    userId,
+    { ...input, _id: educationId },
+    "education",
+    "update",
+    ["name", "institute", "startDate"],
+  );
 }
 
 export async function deleteEducation(educationId: string, userId: string) {
-  return updateProfileField(userId, { _id: educationId }, "education", "delete", []);
+  return updateProfileField(
+    userId,
+    { _id: educationId },
+    "education",
+    "delete",
+    [],
+  );
 }
 
 export async function addLicense(input: LicenseInput, userId: string) {
-  return updateProfileField(userId, input, "licenses", "add", ["number", "name", "issuedBy", "issuedAt"]);
+  return updateProfileField(userId, input, "licenses", "add", [
+    "number",
+    "name",
+    "issuedBy",
+    "issuedAt",
+  ]);
 }
 
-export async function updateLicense(licenseId: string, input: LicenseInput, userId: string) {
-  return updateProfileField(userId, { ...input, _id: licenseId }, "licenses", "update", ["number", "name", "issuedBy", "issuedAt"]);
+export async function updateLicense(
+  licenseId: string,
+  input: LicenseInput,
+  userId: string,
+) {
+  return updateProfileField(
+    userId,
+    { ...input, _id: licenseId },
+    "licenses",
+    "update",
+    ["number", "name", "issuedBy", "issuedAt"],
+  );
 }
 
 export async function deleteLicense(licenseId: string, userId: string) {
-  return updateProfileField(userId, { _id: licenseId }, "licenses", "delete", []);
+  return updateProfileField(
+    userId,
+    { _id: licenseId },
+    "licenses",
+    "delete",
+    [],
+  );
 }
 
 export default User;

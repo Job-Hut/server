@@ -16,6 +16,7 @@ import { typeDefs, resolvers } from "./schema";
 import { createContext } from "./context";
 import { init as initializeMongoDB } from "./config/mongodb";
 import { GraphQLSchema } from "graphql";
+import { graphqlUploadExpress } from "graphql-upload-ts";
 
 // Separate schema configuration
 export const createApolloSchema = () =>
@@ -36,6 +37,7 @@ export const createApolloServer = (
   return new ApolloServer({
     schema,
     introspection: true,
+    csrfPrevention: true,
     plugins: [
       ApolloServerPluginDrainHttpServer({ httpServer }),
       {
@@ -67,8 +69,22 @@ export const setupApplication = async ({ startServer = true }) => {
   await server.start();
 
   app.use(
+    cors<cors.CorsRequest>({
+      origin: "http://localhost:5173", // Your client URL
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "apollo-require-preflight",
+        "x-apollo-operation-name",
+        "Authorization",
+      ],
+    }),
+  );
+  app.use(graphqlUploadExpress());
+
+  app.use(
     "/graphql",
-    cors<cors.CorsRequest>(),
     express.json(),
     expressMiddleware(server, {
       context: createContext,
