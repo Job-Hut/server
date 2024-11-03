@@ -17,26 +17,34 @@ type Job {
 }
 
 type Query {
-  getJobs: [Job]
+  getJobs(page: Int, query: String): [Job]
 }
 `;
 
 export const resolvers = {
   Query: {
-    getJobs: async () => {
-      const data = await redis.get("jobs");
+    getJobs: async (_, { page = 1, query }) => {
+      const data = await redis.get(`jobs-${page}-${query}`);
 
       if (data) {
         return JSON.parse(data);
       }
 
-      const jobsStreet: JobVacancy[] = await jobStreet();
-      const kalibrrSource: JobVacancy[] = await kalibrr();
+      const jobsStreet: JobVacancy[] = await jobStreet({
+        page,
+        query,
+      });
+      const kalibrrSource: JobVacancy[] = await kalibrr({
+        page,
+        query,
+      });
 
       await redis.set(
-        "jobs",
+        `jobs-${page}-${query}`,
         JSON.stringify([...jobsStreet, ...kalibrrSource]),
       );
+
+      await redis.expire(`jobs-${page}-${query}`, 60 * 60 * 4);
 
       return [...jobsStreet, ...kalibrrSource];
     },
