@@ -259,6 +259,12 @@ export const resolvers = {
         (appId) => !appId.equals(applicationId),
       );
       await collection.save();
+
+      await Application.updateOne(
+        { _id: applicationId },
+        { $set: { collectionId: null } },
+      );
+
       return collection;
     },
   },
