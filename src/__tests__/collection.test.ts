@@ -730,4 +730,69 @@ describe("Collection", () => {
       "You are not authorized to remove applications from this collection",
     );
   });
+
+  it("Should add a message to the chat when the collection exists", async () => {
+    const collection = new Collection({
+      name: "Test Collection",
+      description: "A collection for testing.",
+      ownerId: user._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collection.save();
+
+    const query = `
+      mutation AddMessageToChat($collectionId: ID!, $message: String!) {
+        addMessageToChat(collectionId: $collectionId, message: $message) {
+          _id
+          chat {
+            senderId
+            content
+            createdAt
+          }
+        }
+      }
+    `;
+
+    const message = "Hello, this is a test message.";
+    const variables = { collectionId: collection._id.toString(), message };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.addMessageToChat).toBeDefined();
+    expect(response.body.data.addMessageToChat.chat).toHaveLength(1);
+    expect(response.body.data.addMessageToChat.chat[0].content).toBe(message);
+    expect(response.body.data.addMessageToChat.chat[0].senderId).toBe(
+      user._id.toString(),
+    );
+  });
+
+  it("Should return an error when trying to add a message to a non-existent collection", async () => {
+    const variables = {
+      collectionId: "60c72b2f9b1e8e001f8e4e1b",
+      message: "This message won't be added.",
+    };
+
+    const query = `
+      mutation AddMessageToChat($collectionId: ID!, $message: String!) {
+        addMessageToChat(collectionId: $collectionId, message: $message) {
+          _id
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
 });
