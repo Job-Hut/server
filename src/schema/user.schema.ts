@@ -21,6 +21,9 @@ import User, {
 } from "../models/user.model";
 import { GraphQLUpload } from "graphql-upload-ts";
 import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
+import { PubSub } from "graphql-subscriptions";
+
+const pubsub = new PubSub();
 
 export const typeDefs = `#graphql
   
@@ -35,7 +38,8 @@ export const typeDefs = `#graphql
     email: String!
     password: String!
     profile: Profile
-    collections: [ID]
+    collections: [Collection]
+    isOnline: Boolean!
     createdAt: Date
     updatedAt: Date
   }
@@ -134,8 +138,12 @@ export const typeDefs = `#graphql
     addLicense(input: LicenseInput): Profile!
     updateLicense(licenseId: String!, input: LicenseInput): Profile!
     deleteLicense(licenseId: String!): Profile!
+    updateUserPresence(isOnline: Boolean!): User
   }
 
+  type Subscription {
+    userPresence: User
+  }
 `;
 
 export const resolvers = {
@@ -145,7 +153,7 @@ export const resolvers = {
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).populate("collections");
       if (!user) {
         throw new Error("No User Found");
       }
@@ -153,7 +161,11 @@ export const resolvers = {
     },
     getAuthenticatedUser: async (_: unknown, __: unknown, context) => {
       const loggedUser = await context.authentication();
-      return await User.findById(loggedUser._id);
+      const user = await User.findById(loggedUser).populate("collections");
+      if (!user) {
+        throw new Error("No User Found");
+      }
+      return user;
     },
   },
   Mutation: {
@@ -210,7 +222,6 @@ export const resolvers = {
 
         return user;
       } catch (error) {
-        console.log(error);
         throw new Error("Update Failed: " + error.message);
       }
     },
@@ -353,6 +364,29 @@ export const resolvers = {
       } catch (error) {
         throw new Error("Delete Failed: " + error.message);
       }
+    },
+    updateUserPresence: async (_: unknown, { isOnline }, context) => {
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
+
+      if (!user) throw new Error("User not found");
+
+      user.isOnline = isOnline;
+      await user.save();
+
+      pubsub.publish("USER_PRESENCE", { userPresence: user });
+
+      user.collections.forEach(async (collectionId) => {
+        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId}`, { userPresence: user });
+      });
+
+      return user;
+    }
+  },
+  Subscription: {
+    userPresence: {
+      subscribe: () => pubsub.asyncIterator("USER_PRESENCE"),
     },
   },
 };
