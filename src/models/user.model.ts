@@ -31,12 +31,19 @@ const userSchema = new mongoose.Schema(
     profile: {
       type: profileSchema,
     },
-    collections: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Collection",
-      },
-    ],
+    collections: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Collection",
+        },
+      ],
+      default: []
+    },
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

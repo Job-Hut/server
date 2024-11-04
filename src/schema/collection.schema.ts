@@ -20,8 +20,8 @@ export const typeDefs = `#graphql
     name: String
     description: String
     ownerId: ID!
-    sharedWith: [ID]
-    applications: [ID]
+    sharedWith: [User]
+    applications: [Application]
     chat: [Message]
     createdAt: Date
     updatedAt: Date
@@ -77,6 +77,7 @@ export const typeDefs = `#graphql
 
   type Subscription {
     newMessage(collectionId: ID!): Message
+    collectionUserPresence(collectionId: ID!): User
   }
 `;
 
@@ -84,6 +85,7 @@ export const resolvers = {
   Query: {
     getAllCollection: async (_, __, context) => {
       const user = await context.authentication();
+      if(!user) throw new Error("User not found");
       return await Collection.find({ ownerId: user._id });
     },
 
@@ -92,7 +94,9 @@ export const resolvers = {
       const collection = await Collection.findOne({
         _id: id,
         ownerId: user._id,
-      });
+      })
+        .populate("sharedWith")
+        .populate("applications");
       if (!collection)
         throw new Error(
           "Collection not found or you do not have permission to view it.",
@@ -104,14 +108,21 @@ export const resolvers = {
 
   Mutation: {
     createCollection: async (_, { input }, context) => {
-      const user = await context.authentication();
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
 
       const newCollection = new Collection({
         ...input,
         ownerId: user._id,
       });
 
-      return await newCollection.save();
+      await newCollection.save();
+
+      user.collections.push(newCollection._id);
+      
+      await user.save();
+      return newCollection;
     },
 
     deleteCollection: async (_, { id }, context) => {
@@ -159,7 +170,7 @@ export const resolvers = {
         updatedAt: new Date(),
       });
       await collection.save();
-      pubsub.publish(`NEW_MESSAGE_${collectionId}`, {
+      pubsub.publish(`COLLECTION_NEW_MESSAGE_${collectionId}`, {
         newMessage: collection.chat[collection.chat.length - 1],
       });
       return collection;
@@ -256,7 +267,12 @@ export const resolvers = {
   Subscription: {
     newMessage: {
       subscribe: async (_, { collectionId }) => {
-        return pubsub.asyncIterator(`NEW_MESSAGE_${collectionId}`);
+        return pubsub.asyncIterator(`COLLECTION_NEW_MESSAGE_${collectionId}`);
+      },
+    },
+    collectionUserPresence: {
+      subscribe: async (_, { collectionId }) => {
+        return pubsub.asyncIterator(`COLLECTION_USER_PRESENCE_${collectionId}`);
       },
     },
   },

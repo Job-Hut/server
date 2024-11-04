@@ -16,13 +16,21 @@ const collectionSchema = new mongoose.Schema({
     required: true,
   },
   sharedWith: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     default: [],
   },
   applications: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Application",
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Application",
+      },
+    ],
     default: [],
   },
   chat: {
