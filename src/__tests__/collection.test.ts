@@ -314,4 +314,140 @@ describe("Collection", () => {
       "You do not have permission to delete this collection",
     );
   });
+
+  it("Should return an error when trying to delete a collection that does not exist", async () => {
+    const query = `
+      mutation DeleteCollection($id: ID!) {
+        deleteCollection(id: $id) {
+          _id
+        }
+      }
+    `;
+
+    const variables = { id: "60e5f9b2c1f1e1a4e8c8f3d2" };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("Should update a collection successfully when user is the owner", async () => {
+    const query = `
+      mutation UpdateCollection($id: ID!, $input: CollectionInput) {
+        updateCollection(id: $id, input: $input) {
+          _id
+          name
+          description
+        }
+      }
+    `;
+
+    const variables = {
+      // id: collectionToUpdate._id.toString(),
+      id: collection._id.toString(),
+      input: {
+        name: "Updated Collection",
+        description: "This is an updated collection.",
+      },
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.updateCollection).toBeDefined();
+    expect(response.body.data.updateCollection.name).toBe("Updated Collection");
+    expect(response.body.data.updateCollection.description).toBe(
+      "This is an updated collection.",
+    );
+
+    const updatedCollection = await Collection.findById(collection._id);
+    expect(updatedCollection.name).toBe("Updated Collection");
+    expect(updatedCollection.description).toBe(
+      "This is an updated collection.",
+    );
+  });
+
+  it("Should return an error when trying to update a non-existent collection", async () => {
+    const query = `
+      mutation UpdateCollection($id: ID!, $input: CollectionInput!) {
+        updateCollection(id: $id, input: $input) {
+          name
+          description
+        }
+      }
+    `;
+
+    const variables = {
+      id: "60e5f9b2c1f1e1a4e8c8f3d2",
+      input: {
+        name: "Attempted Update",
+        description: "This update should fail.",
+      },
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("Should return an error when user tries to update a collection they do not own", async () => {
+    const anotherUser = await register(
+      "user3",
+      "avatar3",
+      "fullname3",
+      "user3@mail.com",
+      "Password123@",
+    );
+
+    const collectionNotOwned = new Collection({
+      name: "Collection Not Owned",
+      description: "This collection does not belong to the user.",
+      ownerId: anotherUser._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collectionNotOwned.save();
+
+    const query = `
+      mutation UpdateCollection($id: ID!, $input: CollectionInput) {
+        updateCollection(id: $id, input: $input) {
+          _id
+          name
+        }
+      }
+    `;
+
+    const variables = {
+      id: collectionNotOwned._id.toString(),
+      input: {
+        name: "Unauthorized Update",
+        description: "This update should not be allowed.",
+      },
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "You do not have permission to update this collection.",
+    );
+  });
 });

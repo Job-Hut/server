@@ -125,18 +125,19 @@ export const resolvers = {
 
     deleteCollection: async (_, { id }, context) => {
       const user = await context.authentication();
-      const collection = await Collection.findByIdAndDelete(id);
+      const collection = await Collection.findById(id);
 
+      if (!collection) throw new Error("Collection not found");
+      if (!collection.ownerId.equals(user._id)) {
+        throw new Error("You do not have permission to delete this collection");
+      }
+
+      await Collection.findByIdAndDelete(id);
       await User.updateMany(
         { _id: { $in: collection.sharedWith } },
         { $pull: { collections: id } },
       );
 
-      if (!collection) throw new Error("Collection not found");
-
-      if (!collection.ownerId.equals(user._id)) {
-        throw new Error("You do not have permission to delete this collection");
-      }
       return collection;
     },
 
@@ -147,7 +148,6 @@ export const resolvers = {
       if (!collection) {
         throw new Error("Collection not found");
       }
-
       if (!collection.ownerId.equals(user._id)) {
         throw new Error(
           "You do not have permission to update this collection.",
