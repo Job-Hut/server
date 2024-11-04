@@ -14,6 +14,8 @@ describe("Collection", () => {
   let collection;
   let sharedWith;
   let applications;
+  let user1;
+  let user2;
 
   beforeAll(async () => {
     app = await setupTestEnvironment();
@@ -781,6 +783,96 @@ describe("Collection", () => {
     const query = `
       mutation AddMessageToChat($collectionId: ID!, $message: String!) {
         addMessageToChat(collectionId: $collectionId, message: $message) {
+          _id
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("Should add users to the collection successfully", async () => {
+    collection = new Collection({
+      name: "Test Collection",
+      description: "A collection for testing.",
+      ownerId: user._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collection.save();
+
+    user1 = await register(
+      "user6",
+      "avatar6",
+      "fullname6",
+      "user6@mail.com",
+      "Password123@",
+    );
+
+    user2 = await register(
+      "user7",
+      "avatar7",
+      "fullname7",
+      "user7@mail.com",
+      "Password123@",
+    );
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      userIds: [user1._id.toString(), user2._id.toString()],
+    };
+
+    const query = `
+      mutation AddUsersToCollection($collectionId: ID!, $userIds: [ID!]!) {
+        addUsersToCollection(collectionId: $collectionId, userIds: $userIds) {
+          _id
+          sharedWith
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.addUsersToCollection).toBeDefined();
+
+    const sharedWith = response.body.data.addUsersToCollection.sharedWith.map(
+      (id) => id.toString(),
+    );
+
+    expect(sharedWith.length).toBe(2);
+    expect(sharedWith).toEqual([user1._id.toString(), user2._id.toString()]);
+
+    const updatedCollection = await Collection.findById(collection._id);
+    const updatedSharedWith = updatedCollection.sharedWith.map((id) =>
+      id.toString(),
+    );
+    expect(updatedSharedWith).toEqual([
+      user1._id.toString(),
+      user2._id.toString(),
+    ]);
+  });
+
+  it("Should return an error when trying to add users to a non-existent collection", async () => {
+    const variables = {
+      collectionId: "60c72b2f9b1e8e001f8e4e1b",
+      userIds: [user._id.toString()],
+    };
+
+    const query = `
+      mutation AddUsersToCollection($collectionId: ID!, $userIds: [ID!]!) {
+        addUsersToCollection(collectionId: $collectionId, userIds: $userIds) {
           _id
         }
       }
