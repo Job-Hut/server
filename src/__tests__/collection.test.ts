@@ -103,4 +103,43 @@ describe("Collection", () => {
     expect(response.body.data.getAllCollection).toBeNull();
     expect(response.body.errors).toBeDefined();
   });
+
+  it("Should create a new collection for authenticated user", async () => {
+    const query = `
+      mutation CreateCollection($input: CollectionInput) {
+        createCollection(input: $input) {
+          _id
+          name
+          description
+          ownerId
+          sharedWith
+          applications
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const variables = {
+      input: {
+        name: "Backend",
+        description: "List of backend applications",
+      },
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.createCollection).toBeDefined();
+    expect(response.body.data.createCollection.name).toBe("Backend");
+    expect(response.body.data.createCollection.description).toBe(
+      "List of backend applications",
+    );
+    expect(response.body.data.createCollection.ownerId).toBe(
+      user._id.toString(),
+    );
+  });
 });
