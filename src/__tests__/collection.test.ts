@@ -197,10 +197,10 @@ describe("Collection", () => {
 
   it("Should return an error when user tries to view a collection that is not theirs", async () => {
     const anotherUser = await register(
-      "anotheruser",
-      "anotheravatar",
-      "anotherfullname",
-      "another@mail.com",
+      "user1",
+      "avatar1",
+      "fullname1",
+      "user1@mail.com",
       "Password123@",
     );
 
@@ -272,5 +272,46 @@ describe("Collection", () => {
 
     const deletedCollection = await Collection.findById(collectionToDelete._id);
     expect(deletedCollection).toBeNull();
+  });
+
+  it("Should return an error when user tries to delete a collection they do not own", async () => {
+    const anotherUser = await register(
+      "user2",
+      "avatar2",
+      "fullname2",
+      "user2@mail.com",
+      "Password123@",
+    );
+
+    const collectionNotOwned = new Collection({
+      name: "Collection Not Owned",
+      description: "This collection does not belong to the user.",
+      ownerId: anotherUser._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collectionNotOwned.save();
+
+    const query = `
+      mutation DeleteCollection($id: ID!) {
+        deleteCollection(id: $id) {
+          _id
+        }
+      }
+    `;
+
+    const variables = { id: collectionNotOwned._id.toString() };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "You do not have permission to delete this collection",
+    );
   });
 });
