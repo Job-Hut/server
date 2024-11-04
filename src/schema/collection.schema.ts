@@ -253,6 +253,10 @@ export const resolvers = {
     ) => {
       const user = await context.authentication();
 
+      if (!mongoose.isValidObjectId(collectionId)) {
+        throw new Error("Collection not found");
+      }
+
       const collection = await Collection.findById(collectionId);
       if (!collection) {
         throw new Error("Collection not found");

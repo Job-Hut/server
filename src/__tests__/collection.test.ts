@@ -602,4 +602,132 @@ describe("Collection", () => {
       "One or more applications are not owned by the current user.",
     );
   });
+
+  it("Should remove an application from the collection when the user is the owner", async () => {
+    const collectionToUpdate = new Collection({
+      name: "Collection to Update",
+      description: "This collection will be updated.",
+      ownerId: user._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collectionToUpdate.save();
+
+    const applicationToRemove = new Application({
+      jobTitle: "Tester",
+      ownerId: user._id,
+    });
+    await applicationToRemove.save();
+
+    collectionToUpdate.applications.push(applicationToRemove._id);
+    await collectionToUpdate.save();
+
+    const query = `
+      mutation RemoveApplicationFromCollection($collectionId: ID!, $applicationId: ID!) {
+        removeApplicationFromCollection(collectionId: $collectionId, applicationId: $applicationId) {
+          _id
+          applications
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collectionToUpdate._id.toString(),
+      applicationId: applicationToRemove._id.toString(),
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.removeApplicationFromCollection).toBeDefined();
+    expect(
+      response.body.data.removeApplicationFromCollection.applications,
+    ).not.toContain(applicationToRemove._id.toString());
+
+    const updatedCollection = await Collection.findById(collectionToUpdate._id);
+    expect(updatedCollection.applications).not.toContain(
+      applicationToRemove._id,
+    );
+  });
+
+  it("Should return an error when trying to remove an application from a collection that does not exist", async () => {
+    const query = `
+      mutation RemoveApplicationFromCollection($collectionId: ID!, $applicationId: ID!) {
+        removeApplicationFromCollection(collectionId: $collectionId, applicationId: $applicationId) {
+          _id
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: "invalid_id",
+      applicationId: "some_application_id",
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("Should return an error when trying to remove an application from a collection the user does not own", async () => {
+    const anotherUser = await register(
+      "user5",
+      "avatar5",
+      "fullname5",
+      "user5@mail.com",
+      "Password123@",
+    );
+
+    const collectionNotOwned = new Collection({
+      name: "Collection Not Owned",
+      description: "This collection does not belong to the user.",
+      ownerId: anotherUser._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collectionNotOwned.save();
+
+    const applicationNotOwned = new Application({
+      jobTitle: "Tester",
+      ownerId: anotherUser._id,
+    });
+    await applicationNotOwned.save();
+
+    collectionNotOwned.applications.push(applicationNotOwned._id);
+    await collectionNotOwned.save();
+
+    const query = `
+      mutation RemoveApplicationFromCollection($collectionId: ID!, $applicationId: ID!) {
+        removeApplicationFromCollection(collectionId: $collectionId, applicationId: $applicationId) {
+          _id
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collectionNotOwned._id.toString(),
+      applicationId: applicationNotOwned._id.toString(),
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "You are not authorized to remove applications from this collection",
+    );
+  });
 });
