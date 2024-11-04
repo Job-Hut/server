@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import Collection from "./collection.model";
-import User from "./user.model";
 
 const taskSchema = new mongoose.Schema({
   title: { type: String, default: "" },
@@ -20,7 +18,7 @@ const applicationSchema = new mongoose.Schema({
   collectionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Collection",
-    default: [],
+    default: null,
   },
   jobTitle: { type: String, default: "" },
   description: { type: String, default: "" },
