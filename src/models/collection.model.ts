@@ -15,20 +15,24 @@ const collectionSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  sharedWith: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: [],
-    },
-  ],
-  applications: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Application",
-      default: [],
-    },
-  ],
+  sharedWith: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    default: [],
+  },
+  applications: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Application",
+      },
+    ],
+    default: [],
+  },
   chat: {
     type: [chatSchema],
     default: [],
