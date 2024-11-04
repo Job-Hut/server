@@ -207,23 +207,33 @@ export const resolvers = {
         _id: collectionId,
         ownerId: user._id,
       });
-      if (!collection)
+
+      if (!collection) {
         throw new Error(
           "Collection not found or you do not have permission to update it.",
         );
-
+      }
       const applications = await Application.find({
         _id: { $in: applicationIds },
         ownerId: user._id,
       });
+
       if (applications.length !== applicationIds.length) {
         throw new Error(
           "One or more applications are not owned by the current user.",
         );
       }
-
+      if (!Array.isArray(collection.applications)) {
+        collection.applications = [];
+      }
       collection.applications.push(...applicationIds);
       await collection.save();
+
+      await Application.updateMany(
+        { _id: { $in: applicationIds } },
+        { $set: { collectionId: collectionId } },
+      );
+
       return collection;
     },
 
