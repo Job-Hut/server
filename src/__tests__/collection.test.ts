@@ -142,4 +142,35 @@ describe("Collection", () => {
       user._id.toString(),
     );
   });
+
+  it("Should get collection by ID when user is authenticated and collection ID is correct", async () => {
+    const query = `
+      query GetCollectionById($id: ID!) {
+        getCollectionById(id: $id) {
+          _id
+          name
+          description
+          ownerId
+          sharedWith
+          applications
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const variables = { id: collection._id.toString() };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.getCollectionById).toBeDefined();
+    expect(response.body.data.getCollectionById._id).toBe(
+      collection._id.toString(),
+    );
+    expect(response.body.data.getCollectionById.name).toBe("Backend");
+  });
 });
