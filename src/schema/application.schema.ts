@@ -7,7 +7,7 @@ export const typeDefs = `#graphql
     _id: ID!
     title: String
     description: String
-    completed: Boolean
+    completed: Boolean!
     dueDate: Date
     createdAt: Date
     updatedAt: Date
