@@ -1,9 +1,7 @@
+import pubsub from "../config/pubsub";
 import Application from "../models/application.model";
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
-import { PubSub } from "graphql-subscriptions";
-
-const pubsub = new PubSub();
 
 export const typeDefs = `#graphql
   scalar Date
@@ -85,8 +83,10 @@ export const resolvers = {
   Query: {
     getAllCollection: async (_, __, context) => {
       const user = await context.authentication();
-      if(!user) throw new Error("User not found");
-      return await Collection.find({ ownerId: user._id });
+      if (!user) throw new Error("User not found");
+      return await Collection.find({ ownerId: user._id })
+        .populate("sharedWith")
+        .populate("applications");
     },
 
     getCollectionById: async (_, { id }, context) => {
@@ -120,7 +120,7 @@ export const resolvers = {
       await newCollection.save();
 
       user.collections.push(newCollection._id);
-      
+
       await user.save();
       return newCollection;
     },
