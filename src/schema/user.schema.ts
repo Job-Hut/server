@@ -21,9 +21,8 @@ import User, {
 } from "../models/user.model";
 import { GraphQLUpload } from "graphql-upload-ts";
 import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
-import { PubSub } from "graphql-subscriptions";
 
-const pubsub = new PubSub();
+import pubsub from "../config/pubsub";
 
 export const typeDefs = `#graphql
   
@@ -118,7 +117,7 @@ export const typeDefs = `#graphql
   }
   
   type Query {
-    getAllUsers: [User]
+    getAllUsers(keyword: String): [User]
     getUserById(userId: String!): User
     getAuthenticatedUser: User
   }
@@ -149,7 +148,16 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Upload: GraphQLUpload,
   Query: {
-    getAllUsers: async () => {
+    getAllUsers: async (_: unknown, { keyword }) => {
+      if (keyword) {
+        return await User.find({
+          $or: [
+            { username: { $regex: keyword, $options: "i" } },
+            { email: { $regex: keyword, $options: "i" } },
+            { fullName: { $regex: keyword, $options: "i" } },
+          ],
+        });
+      }
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
@@ -378,11 +386,13 @@ export const resolvers = {
       pubsub.publish("USER_PRESENCE", { userPresence: user });
 
       user.collections.forEach(async (collectionId) => {
-        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId}`, { userPresence: user });
+        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId.toString()}`, {
+          collectionUserPresence: user,
+        });
       });
 
       return user;
-    }
+    },
   },
   Subscription: {
     userPresence: {
