@@ -1,4 +1,6 @@
+
 import pubsub from "../config/pubsub";
+import mongoose from "mongoose";
 import Application from "../models/application.model";
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
@@ -91,16 +93,25 @@ export const resolvers = {
 
     getCollectionById: async (_, { id }, context) => {
       const user = await context.authentication();
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error("Collection not found");
+      }
       const collection = await Collection.findOne({
         _id: id,
         ownerId: user._id,
       })
         .populate("sharedWith")
         .populate("applications");
-      if (!collection)
+
+      if (
+        !collection ||
+        (!collection.ownerId.equals(user._id) &&
+          !collection.sharedWith.includes(user._id))
+      ) {
         throw new Error(
           "Collection not found or you do not have permission to view it.",
         );
+      }
 
       return collection;
     },
@@ -218,23 +229,33 @@ export const resolvers = {
         _id: collectionId,
         ownerId: user._id,
       });
-      if (!collection)
+
+      if (!collection) {
         throw new Error(
           "Collection not found or you do not have permission to update it.",
         );
-
+      }
       const applications = await Application.find({
         _id: { $in: applicationIds },
         ownerId: user._id,
       });
+
       if (applications.length !== applicationIds.length) {
         throw new Error(
           "One or more applications are not owned by the current user.",
         );
       }
-
+      if (!Array.isArray(collection.applications)) {
+        collection.applications = [];
+      }
       collection.applications.push(...applicationIds);
       await collection.save();
+
+      await Application.updateMany(
+        { _id: { $in: applicationIds } },
+        { $set: { collectionId: collectionId } },
+      );
+
       return collection;
     },
 
@@ -260,6 +281,12 @@ export const resolvers = {
         (appId) => !appId.equals(applicationId),
       );
       await collection.save();
+
+      await Application.updateOne(
+        { _id: applicationId },
+        { $set: { collectionId: null } },
+      );
+
       return collection;
     },
   },
