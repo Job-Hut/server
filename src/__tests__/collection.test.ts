@@ -4,6 +4,8 @@ import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import { signToken } from "../helpers/jwt";
 import { register } from "../models/user.model";
 import Collection from "../models/collection.model";
+import Application from "../models/application.model";
+import mongoose from "mongoose";
 
 describe("Collection", () => {
   let app: Express;
@@ -448,6 +450,156 @@ describe("Collection", () => {
     expect(response.body.errors).toBeDefined();
     expect(response.body.errors[0].message).toBe(
       "You do not have permission to update this collection.",
+    );
+  });
+
+  it("Should add applications to a collection successfully when the user is the owner", async () => {
+    const collection = new Collection({
+      name: "My Collection",
+      description: "This is my collection.",
+      ownerId: user._id,
+      applications: [],
+    });
+    await collection.save();
+
+    const application1 = new Application({
+      jobTitle: "Dev",
+      ownerId: user._id,
+    });
+    const application2 = new Application({
+      jobTitle: "Tester",
+      ownerId: user._id,
+    });
+    await application1.save();
+    await application2.save();
+
+    const query = `
+      mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
+        addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
+          _id
+          applications
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      applicationIds: [
+        application1._id.toString(),
+        application2._id.toString(),
+      ],
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.addApplicationsToCollection).toBeDefined();
+    expect(response.body.data.addApplicationsToCollection.applications).toEqual(
+      expect.arrayContaining([
+        application1._id.toString(),
+        application2._id.toString(),
+      ]),
+    );
+  });
+
+  it("Should return an error when trying to add applications to a collection the user does not own", async () => {
+    const anotherUser = await register(
+      "user4",
+      "avatar4",
+      "fullname4",
+      "user4@mail.com",
+      "Password123@",
+    );
+
+    const collectionNotOwned = new Collection({
+      name: "Collection Not Owned",
+      description: "This collection does not belong to the user.",
+      ownerId: anotherUser._id,
+      applications: [],
+    });
+    await collectionNotOwned.save();
+
+    const application1 = new Application({
+      jobTitle: "Dev",
+      ownerId: user._id,
+    });
+    await application1.save();
+
+    const query = `
+      mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
+        addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
+          _id
+          applications
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collectionNotOwned._id.toString(),
+      applicationIds: [application1._id.toString()],
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "Collection not found or you do not have permission to update it.",
+    );
+  });
+
+  it("Should return an error when one or more applications are not owned by the current user", async () => {
+    const collection = new Collection({
+      name: "My Collection",
+      description: "This is my collection.",
+      ownerId: user._id,
+      applications: [],
+    });
+    await collection.save();
+
+    const applicationOwned = new Application({
+      jobTitle: "Dev",
+      ownerId: user._id,
+    });
+    const applicationNotOwned = new Application({
+      jobTitle: "Tester",
+      ownerId: new mongoose.Types.ObjectId(),
+    });
+    await applicationOwned.save();
+    await applicationNotOwned.save();
+
+    const query = `
+      mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
+        addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
+          _id
+          applications
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      applicationIds: [
+        applicationOwned._id.toString(),
+        applicationNotOwned._id.toString(),
+      ],
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "One or more applications are not owned by the current user.",
     );
   });
 });
