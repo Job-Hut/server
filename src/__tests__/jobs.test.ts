@@ -2,8 +2,9 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 
-describe("GraphQL Integration Tests", () => {
+describe("Jobs", () => {
   let app: Express;
+
   beforeAll(async () => {
     app = await setupTestEnvironment();
   });
