@@ -143,7 +143,7 @@ describe("Collection", () => {
     );
   });
 
-  it("Should get collection by ID when user is authenticated and collection ID is correct", async () => {
+  it("Should retrieve the collection by ID when the user is authenticated and the collection ID is valid", async () => {
     const query = `
       query GetCollectionById($id: ID!) {
         getCollectionById(id: $id) {
@@ -193,5 +193,84 @@ describe("Collection", () => {
     expect(response.status).toBe(200);
     expect(response.body.errors).toBeDefined();
     expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("Should return an error when user tries to view a collection that is not theirs", async () => {
+    const anotherUser = await register(
+      "anotheruser",
+      "anotheravatar",
+      "anotherfullname",
+      "another@mail.com",
+      "Password123@",
+    );
+
+    const anotherCollection = new Collection({
+      name: "Another Collection",
+      description: "This collection belongs to another user.",
+      ownerId: anotherUser._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await anotherCollection.save();
+
+    const query = `
+      query GetCollectionById($getCollectionByIdId: ID!) {
+        getCollectionById(id: $getCollectionByIdId) {
+          name
+          description
+        }
+      }
+    `;
+
+    const variables = { getCollectionByIdId: anotherCollection._id.toString() };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe(
+      "Collection not found or you do not have permission to view it.",
+    );
+  });
+
+  it("Should delete a collection when the user is the owner", async () => {
+    const collectionToDelete = new Collection({
+      name: "Collection to Delete",
+      description: "This collection will be deleted.",
+      ownerId: user._id,
+      sharedWith: [],
+      applications: [],
+      chat: [],
+    });
+    await collectionToDelete.save();
+
+    const query = `
+      mutation DeleteCollection($id: ID!) {
+        deleteCollection(id: $id) {
+          _id
+          name
+        }
+      }
+    `;
+
+    const variables = { id: collectionToDelete._id.toString() };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.deleteCollection).toBeDefined();
+    expect(response.body.data.deleteCollection._id).toBe(
+      collectionToDelete._id.toString(),
+    );
+
+    const deletedCollection = await Collection.findById(collectionToDelete._id);
+    expect(deletedCollection).toBeNull();
   });
 });
