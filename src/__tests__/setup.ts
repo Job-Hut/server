@@ -5,7 +5,7 @@ import redis from "../config/redis";
 import { init } from "../config/mongodb";
 
 dotenv.config({
-  path: ".env.test.local",
+  path: ".env",
 });
 
 export const setupTestEnvironment = async () => {
