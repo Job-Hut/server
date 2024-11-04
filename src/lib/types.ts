@@ -48,7 +48,7 @@ export interface User {
   password: string;
   profile: Profile;
   collections: Collection | ObjectId[];
-  lastSeen: Date;
+  isOnline: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
