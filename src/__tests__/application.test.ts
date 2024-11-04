@@ -175,6 +175,10 @@ describe("Application", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.createApplication).toBeDefined();
+    expect(response.body.data.createApplication.ownerId).toBe(
+      user._id.toString(),
+    );
+    expect(response.body.data.createApplication.collectionId).toBeNull();
   });
 
   it("Should return all applications for authenticated user", async () => {

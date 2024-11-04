@@ -12,7 +12,6 @@ module.exports = {
     "interfaces",
     "jestGlobalMocks.ts",
     ".module.ts",
-    "<rootDir>/src/index.ts",
     ".mock.ts",
   ],
 };
