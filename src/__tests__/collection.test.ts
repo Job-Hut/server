@@ -173,4 +173,25 @@ describe("Collection", () => {
     );
     expect(response.body.data.getCollectionById.name).toBe("Backend");
   });
+
+  it("Should return an error when collection ID is invalid", async () => {
+    const query = `
+      query GetCollectionById($getCollectionByIdId: ID!) {
+        getCollectionById(id: $getCollectionByIdId) {
+          name
+        }
+      }
+    `;
+
+    const variables = { getCollectionByIdId: "invalid_id" };
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
 });

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Application from "../models/application.model";
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
@@ -89,14 +90,22 @@ export const resolvers = {
 
     getCollectionById: async (_, { id }, context) => {
       const user = await context.authentication();
-      const collection = await Collection.findOne({
-        _id: id,
-        ownerId: user._id,
-      });
-      if (!collection)
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error("Collection not found");
+      }
+
+      const collection = await Collection.findOne({ _id: id });
+
+      if (
+        !collection ||
+        (!collection.ownerId.equals(user._id) &&
+          !collection.sharedWith.includes(user._id))
+      ) {
         throw new Error(
           "Collection not found or you do not have permission to view it.",
         );
+      }
 
       return collection;
     },
