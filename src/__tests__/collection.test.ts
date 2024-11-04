@@ -887,4 +887,106 @@ describe("Collection", () => {
     expect(response.body.errors).toBeDefined();
     expect(response.body.errors[0].message).toBe("Collection not found");
   });
+
+  it("Should remove users from the collection successfully", async () => {
+    const user1 = await register(
+      "user10",
+      "avatar10",
+      "fullname10",
+      "user10@mail.com",
+      "Password123@",
+    );
+
+    const user2 = await register(
+      "user20",
+      "avatar20",
+      "fullname20",
+      "user20@mail.com",
+      "Password123@",
+    );
+
+    const collection = new Collection({
+      name: "Test Collection",
+      description: "A collection for testing user removal.",
+      ownerId: user1._id,
+      sharedWith: [user1._id, user2._id],
+      applications: [],
+      chat: [],
+    });
+    await collection.save();
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      userIds: [user2._id.toString()],
+    };
+
+    const query = `
+      mutation RemoveUsersFromCollection($collectionId: ID!, $userIds: [ID!]!) {
+        removeUsersFromCollection(collectionId: $collectionId, userIds: $userIds) {
+          _id
+          sharedWith
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set(
+        "Authorization",
+        `Bearer ${signToken({
+          _id: user1._id.toString(),
+          username: user1.username,
+          email: user1.email,
+        })}`,
+      )
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.removeUsersFromCollection).toBeDefined();
+
+    const updatedCollection = await Collection.findById(collection._id);
+
+    expect(updatedCollection.sharedWith).not.toContain(user2._id.toString());
+  });
+
+  it("Should return an error when the collection does not exist", async () => {
+    const user = await register(
+      "user11",
+      "avatar11",
+      "fullname11",
+      "user11@mail.com",
+      "Password123@",
+    );
+
+    const invalidCollectionId = new mongoose.Types.ObjectId();
+
+    const variables = {
+      collectionId: invalidCollectionId.toString(),
+      userIds: [user._id.toString()],
+    };
+
+    const query = `
+      mutation RemoveUsersFromCollection($collectionId: ID!, $userIds: [ID!]!) {
+        removeUsersFromCollection(collectionId: $collectionId, userIds: $userIds) {
+          _id
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set(
+        "Authorization",
+        `Bearer ${signToken({
+          _id: user._id.toString(),
+          username: user.username,
+          email: user.email,
+        })}`,
+      )
+      .send({ query, variables });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
 });
