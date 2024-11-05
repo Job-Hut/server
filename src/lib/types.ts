@@ -34,6 +34,7 @@ export interface Experience {
 export interface Profile {
   bio: string;
   location: string;
+  jobPrefs: string[];
   experiences: Experience[];
   educations: Education[];
   licenses: License[];

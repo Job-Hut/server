@@ -9,8 +9,8 @@ export const profileSchema = new mongoose.Schema(
       type: String,
     },
     jobPrefs: {
-      type: [String], // This allows for an array of strings
-      required: false, // Set this according to your requirements
+      type: [String],
+      required: false,
     },
     experiences: [
       {
