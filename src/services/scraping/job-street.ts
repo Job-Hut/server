@@ -40,7 +40,9 @@ export const jobStreet = async ({
     const source = job
       .find(`a[data-automation="job-list-view-job-link"]`)
       .attr("href");
-    const companyLogo = job.find(`img._14jhc320`).attr("src");
+    const companyLogo = job
+      .find(`div[data-automation="company-logo"] > img`)
+      .attr("src");
 
     if (title && company) {
       const jobData: JobVacancy = {
@@ -50,7 +52,8 @@ export const jobStreet = async ({
         location,
         since,
         salary: null,
-        source: `https://id.jobstreet.com${source}`,
+        source: "JobStreet",
+        sourceUrl: `https://id.jobstreet.com${source}`,
         description,
       };
 

@@ -2,8 +2,9 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import mongoose from "mongoose";
-import { createReadStream } from "fs"; // Import fs to read a file if needed
+import { access, createReadStream } from "fs"; // Import fs to read a file if needed
 import path from "path"; // Import path to manage file paths
+import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
 
 describe("GraphQL Integration Tests for User Schema", () => {
   let app: Express;
@@ -623,10 +624,9 @@ describe("GraphQL Integration Tests for User Schema", () => {
     });
 
     describe("updateAvatar Mutation", () => {
-
       it("should successfully update the avatar URL for the logged-in user", async () => {
         const avatarPath = path.join(__dirname, "mockAvatar.png");
-        const avatarFile = createReadStream(avatarPath); 
+        const avatarFile = createReadStream(avatarPath);
 
         const mutation = `
           mutation UpdateAvatar($avatar: Upload!) {
@@ -637,9 +637,11 @@ describe("GraphQL Integration Tests for User Schema", () => {
           }
         `;
 
-        const response = await performMutation(token, mutation, { avatar: avatarFile });
-  
-        expect(response.status).toBe(200)
+        const response = await performMutation(token, mutation, {
+          avatar: avatarFile,
+        });
+
+        expect(response.status).toBe(200);
         expect(response.body.data.updateAvatar.avatar).toBeDefined();
       });
     });
