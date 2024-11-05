@@ -380,8 +380,6 @@ export const resolvers = {
 
       if (!user) throw new Error("User not found");
 
-      console.log(user.username, "--", isOnline);
-
       if (isOnline) {
         user.isOnline += 1;
       } else {
