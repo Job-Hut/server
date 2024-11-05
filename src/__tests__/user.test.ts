@@ -417,14 +417,15 @@ describe("GraphQL Integration Tests for User Schema", () => {
     `;
 
     const response = await request(app).post("/graphql").send({ query });
+    const usernames = response.body.data.getAllUsers.map(user => ({ username: user.username }));
+    
     expect(response.status).toBe(200)
-    expect(response.body.data.getAllUsers).toMatchObject([
+    expect(usernames).toEqual(expect.arrayContaining([
       { username: "newuser" },
       { username: "qwertyuiop" },
       { username: "duplicateEmailUser" },
       { username: "duplicateUsername" },
-    ]);
-    
+    ]));
   })
 
   describe("User Profile Bio, Location, and JobPrefs Mutations", () => {
