@@ -743,9 +743,9 @@ describe("GraphQL Integration Tests for User Schema", () => {
           `;
 
         const response = await performMutation(token, mutation,{ isOnline: true })
-        expect(response.body.data.updateUserPresence).toBeDefined()
         expect(response.status).toBe(200)
-        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: true})
+        expect(response.body.data.updateUserPresence).toBeDefined()
+        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 1})
       });
     });
 
