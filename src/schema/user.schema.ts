@@ -127,6 +127,7 @@ export const typeDefs = `#graphql
   type Mutation {
     register(input: RegisterInput): User!
     login(email: String!, password: String!): AuthPayload!
+    updateProfile(fullName: String!, username: String!, location: String!, bio: String!): User
     updateAvatar(avatar: Upload): User
     updateLocation(location: String): Profile!
     updateBio(bio: String): Profile!
@@ -219,8 +220,47 @@ export const resolvers = {
         throw new Error("Login failed: " + error.message);
       }
     },
+    updateProfile: async (
+      _: unknown,
+      {
+        fullName,
+        username,
+        location,
+        bio,
+      }: { fullName: string; username: string; location: string; bio: string },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        if (!loggedUser) throw new Error("User not found");
+
+        const existingUsername = await User.findOne({ username });
+        if (
+          existingUsername &&
+          existingUsername._id.toString() !== loggedUser._id.toString()
+        ) {
+          throw new Error("Username is already taken");
+        }
+
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          {
+            fullName,
+            username,
+            "profile.location": location,
+            "profile.bio": bio,
+          },
+          { new: true },
+        );
+        if (!user) throw new Error("User not found");
+        return user;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },
     updateAvatar: async (_: unknown, { avatar }, context) => {
       try {
+        console.log(avatar);
         const loggedUser = await context.authentication();
         const upload = await uploadToCloudinary(avatar);
 
@@ -281,14 +321,14 @@ export const resolvers = {
         const user = await User.findByIdAndUpdate(
           loggedUser._id,
           { "profile.jobPrefs": jobPrefs },
-          { new: true }
+          { new: true },
         );
         if (!user) throw new Error("User not found");
         return user.profile;
       } catch (error) {
         throw new Error("Update Failed: " + error.message);
       }
-    },    
+    },
     addExperience: async (
       _: unknown,
       { input }: { input: ExperienceInput },
