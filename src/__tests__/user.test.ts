@@ -38,8 +38,8 @@ describe("GraphQL Integration Tests for User Schema", () => {
   async function getIdByType(type: string) {
     const queries = {
       experiences: `
-        query GetUsers {
-          getUsers {
+        query GetAllUsers {
+          getAllUsers {
             _id
             profile {
               experiences {
@@ -50,8 +50,8 @@ describe("GraphQL Integration Tests for User Schema", () => {
         }
       `,
       licenses: `
-        query GetUsers {
-          getUsers {
+        query GetAllUsers {
+          getAllUsers {
             _id
             profile {
               licenses {
@@ -62,8 +62,8 @@ describe("GraphQL Integration Tests for User Schema", () => {
         }
       `,
       education: `
-        query GetUsers {
-          getUsers {
+        query GetAllUsers {
+          getAllUsers {
             _id
             profile {
               education {
@@ -83,10 +83,10 @@ describe("GraphQL Integration Tests for User Schema", () => {
 
     const response = await request(app).post("/graphql").send({ query });
 
-    return response.body.data.getUsers[0].profile[
+    return response.body.data.getAllUsers[0].profile[
       type === "experiences" ? "experiences" : type
     ].length > 0
-      ? response.body.data.getUsers[0].profile[
+      ? response.body.data.getAllUsers[0].profile[
           type === "experiences" ? "experiences" : type
         ][0]._id
       : null;
@@ -398,6 +398,34 @@ describe("GraphQL Integration Tests for User Schema", () => {
     expect(response.body.data.getUserById).toBeDefined();
     expect(response.body.data.getUserById.username).toBe("testuser2");
   });
+
+  it("should return all user's data", async () => {
+    const query = `
+      query GetAllUsers {
+        getAllUsers {
+          _id
+          username
+          avatar
+          fullName
+          email
+          password
+          isOnline
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const response = await request(app).post("/graphql").send({ query });
+    expect(response.status).toBe(200)
+    expect(response.body.data.getAllUsers).toMatchObject([
+      { username: "newuser" },
+      { username: "qwertyuiop" },
+      { username: "duplicateEmailUser" },
+      { username: "duplicateUsername" },
+    ]);
+    
+  })
 
   describe("User Profile Bio, Location, and JobPrefs Mutations", () => {
     let token: string;
