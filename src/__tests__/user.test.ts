@@ -2,9 +2,10 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import mongoose from "mongoose";
-import { createReadStream } from "fs";
 import path from "path";
-
+import fs from "fs/promises";
+import { FileUpload } from "graphql-upload-ts";
+import { createReadStream } from "fs";
 
 describe("GraphQL Integration Tests for User Schema", () => {
   let app: Express;
@@ -624,9 +625,89 @@ describe("GraphQL Integration Tests for User Schema", () => {
     });
 
     describe("updateAvatar Mutation", () => {
+      let token: string;
+      const mockAvatarPath = path.join(__dirname, "mockAvatar.png");
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+
+        // Create a mock image file for testing
+        await fs.writeFile(mockAvatarPath, "fake image content");
+      });
+
+      afterAll(async () => {
+        // Clean up test file
+        await fs.unlink(mockAvatarPath).catch(() => {});
+      });
+
       it("should successfully update the avatar URL for the logged-in user", async () => {
-        const avatarPath = path.join(__dirname, "mockAvatar.png");
-        const avatarFile = createReadStream(avatarPath);
+        const mutation = `
+          mutation UpdateAvatar($avatar: Upload!) {
+            updateAvatar(avatar: $avatar) {
+              _id
+              avatar
+            }
+          }
+        `;
+
+        const mockFileUpload: FileUpload = {
+          filename: "mockAvatar.png",
+          mimetype: "image/png",
+          encoding: "7bit",
+          createReadStream: () => createReadStream(mockAvatarPath),
+        };
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .field(
+            "operations",
+            JSON.stringify({
+              query: mutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+          .attach("0", mockAvatarPath);
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updateAvatar).toBeDefined();
+        expect(response.body.data.updateAvatar.avatar).toMatch(/^https:\/\//);
+      });
+
+      it("should fail to update avatar when no file is provided", async () => {
+        const mutation = `
+          mutation UpdateAvatar($avatar: Upload!) {
+            updateAvatar(avatar: $avatar) {
+              _id
+              avatar
+            }
+          }
+        `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .field(
+            "operations",
+            JSON.stringify({
+              query: mutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({}));
+
+        expect(response.status).toBe(200);
+        expect(response.body.errors).toBeDefined();
+        expect(response.body.errors[0].message).toContain("No file uploaded");
+      });
+
+      it("should fail to update avatar with invalid file type", async () => {
+        const invalidFilePath = path.join(__dirname, "invalid.txt");
+        await fs.writeFile(invalidFilePath, "invalid file content");
 
         const mutation = `
           mutation UpdateAvatar($avatar: Upload!) {
@@ -637,12 +718,86 @@ describe("GraphQL Integration Tests for User Schema", () => {
           }
         `;
 
-        const response = await performMutation(token, mutation, {
-          avatar: avatarFile,
-        });
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .field(
+            "operations",
+            JSON.stringify({
+              query: mutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+          .attach("0", invalidFilePath);
+
+        await fs.unlink(invalidFilePath).catch(() => {});
 
         expect(response.status).toBe(200);
-        expect(response.body.data.updateAvatar.avatar).toBeDefined();
+        expect(response.body.errors).toBeDefined();
+        expect(response.body.errors[0].message).toContain("Invalid file type");
+      });
+
+      it("should fail to update avatar when not authenticated", async () => {
+        const mutation = `
+          mutation UpdateAvatar($avatar: Upload!) {
+            updateAvatar(avatar: $avatar) {
+              _id
+              avatar
+            }
+          }
+        `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .field(
+            "operations",
+            JSON.stringify({
+              query: mutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+          .attach("0", mockAvatarPath);
+
+        expect(response.status).toBe(200);
+        expect(response.body.errors).toBeDefined();
+        expect(response.body.errors[0].message).toContain(
+          "You have to login first",
+        );
+      });
+
+      it("should handle file upload errors gracefully", async () => {
+        const mutation = `
+          mutation UpdateAvatar($avatar: Upload!) {
+            updateAvatar(avatar: $avatar) {
+              _id
+              avatar
+            }
+          }
+        `;
+
+        // Create a non-existent file path
+        const nonExistentPath = path.join(__dirname, "non-existent.png");
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .field(
+            "operations",
+            JSON.stringify({
+              query: mutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+          .attach("0", nonExistentPath);
+
+        expect(response.status).toBe(200);
+        expect(response.body.errors).toBeDefined();
+        expect(response.body.errors[0].message).toMatch(
+          /Failed to upload file|File not found/,
+        );
       });
     });
 
@@ -743,10 +898,14 @@ describe("GraphQL Integration Tests for User Schema", () => {
           }
           `;
 
-        const response = await performMutation(token, mutation,{ isOnline: true })
-        expect(response.status).toBe(200)
-        expect(response.body.data.updateUserPresence).toBeDefined()
-        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 1})
+        const response = await performMutation(token, mutation, {
+          isOnline: true,
+        });
+        expect(response.status).toBe(200);
+        expect(response.body.data.updateUserPresence).toBeDefined();
+        expect(response.body.data.updateUserPresence).toMatchObject({
+          isOnline: 1,
+        });
       });
 
       it("should successfully update user online presence to 0 (offline)", async () => {
@@ -761,10 +920,14 @@ describe("GraphQL Integration Tests for User Schema", () => {
           }
           `;
 
-        const response = await performMutation(token, mutation,{ isOnline: false })
-        expect(response.status).toBe(200)
-        expect(response.body.data.updateUserPresence).toBeDefined()
-        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 0})
+        const response = await performMutation(token, mutation, {
+          isOnline: false,
+        });
+        expect(response.status).toBe(200);
+        expect(response.body.data.updateUserPresence).toBeDefined();
+        expect(response.body.data.updateUserPresence).toMatchObject({
+          isOnline: 0,
+        });
       });
     });
 
@@ -1535,6 +1698,183 @@ describe("GraphQL Integration Tests for User Schema", () => {
         expect(response.body.errors).toBeDefined();
         expect(response.body.errors[0].message).toContain("Delete Failed");
       });
+    });
+  });
+
+  describe("updateAvatar Mutation", () => {
+    let token: string;
+    const mockAvatarPath = path.join(__dirname, "mockAvatar.png");
+
+    beforeAll(async () => {
+      token = await loginAndGetToken(
+        "newuser@example.com",
+        "StrongPassword123",
+      );
+
+      // Create a mock image file for testing
+      await fs.writeFile(mockAvatarPath, "fake image content");
+    });
+
+    afterAll(async () => {
+      // Clean up test file
+      await fs.unlink(mockAvatarPath).catch(() => {});
+    });
+
+    it("should successfully update the avatar URL for the logged-in user", async () => {
+      const mutation = `
+      mutation UpdateAvatar($avatar: Upload!) {
+        updateAvatar(avatar: $avatar) {
+          _id
+          avatar
+        }
+      }
+    `;
+
+      const mockFileUpload: FileUpload = {
+        filename: "mockAvatar.png",
+        mimetype: "image/png",
+        encoding: "7bit",
+        createReadStream: () => createReadStream(mockAvatarPath),
+      };
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .field(
+          "operations",
+          JSON.stringify({
+            query: mutation,
+            variables: { avatar: null },
+          }),
+        )
+        .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+        .attach("0", mockAvatarPath);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.updateAvatar).toBeDefined();
+      expect(response.body.data.updateAvatar.avatar).toMatch(/^https:\/\//);
+    });
+
+    it("should fail to update avatar when no file is provided", async () => {
+      const mutation = `
+      mutation UpdateAvatar($avatar: Upload!) {
+        updateAvatar(avatar: $avatar) {
+          _id
+          avatar
+        }
+      }
+    `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .field(
+          "operations",
+          JSON.stringify({
+            query: mutation,
+            variables: { avatar: null },
+          }),
+        )
+        .field("map", JSON.stringify({}));
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toContain("No file uploaded");
+    });
+
+    it("should fail to update avatar with invalid file type", async () => {
+      const invalidFilePath = path.join(__dirname, "invalid.txt");
+      await fs.writeFile(invalidFilePath, "invalid file content");
+
+      const mutation = `
+      mutation UpdateAvatar($avatar: Upload!) {
+        updateAvatar(avatar: $avatar) {
+          _id
+          avatar
+        }
+      }
+    `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .field(
+          "operations",
+          JSON.stringify({
+            query: mutation,
+            variables: { avatar: null },
+          }),
+        )
+        .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+        .attach("0", invalidFilePath);
+
+      await fs.unlink(invalidFilePath).catch(() => {});
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toContain("Invalid file type");
+    });
+
+    it("should fail to update avatar when not authenticated", async () => {
+      const mutation = `
+      mutation UpdateAvatar($avatar: Upload!) {
+        updateAvatar(avatar: $avatar) {
+          _id
+          avatar
+        }
+      }
+    `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .field(
+          "operations",
+          JSON.stringify({
+            query: mutation,
+            variables: { avatar: null },
+          }),
+        )
+        .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+        .attach("0", mockAvatarPath);
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toContain(
+        "You have to login first",
+      );
+    });
+
+    it("should handle file upload errors gracefully", async () => {
+      const mutation = `
+      mutation UpdateAvatar($avatar: Upload!) {
+        updateAvatar(avatar: $avatar) {
+          _id
+          avatar
+        }
+      }
+    `;
+
+      // Create a non-existent file path
+      const nonExistentPath = path.join(__dirname, "non-existent.png");
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .field(
+          "operations",
+          JSON.stringify({
+            query: mutation,
+            variables: { avatar: null },
+          }),
+        )
+        .field("map", JSON.stringify({ "0": ["variables.avatar"] }))
+        .attach("0", nonExistentPath);
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toMatch(
+        /Failed to upload file|File not found/,
+      );
     });
   });
 });
