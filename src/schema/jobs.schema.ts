@@ -26,14 +26,15 @@ export const resolvers = {
     getJobs: async (_, { page = 1, query }) => {
       const data = await redis.get(`jobs-${page}-${query}`);
 
-      if (data) {
-        return JSON.parse(data);
-      }
+      // if (data) {
+      //   return JSON.parse(data);
+      // }
 
       const jobsStreet: JobVacancy[] = await jobStreet({
         page,
         query,
       });
+
       const kalibrrSource: JobVacancy[] = await kalibrr({
         page,
         query,

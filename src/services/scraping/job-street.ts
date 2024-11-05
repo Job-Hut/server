@@ -13,7 +13,7 @@ export const jobStreet = async ({
   );
 
   const jobsContainer =
-    "#app > div > div:nth-child(7) > div > section > div:nth-child(2) > div > div > div > div > div > div.a3yfdf0._5xlhbl4z._5xlhblr._5xlhblp._5xlhblhv._5xlhblhz._5xlhblbv._5xlhblbp._5xlhbl8j.tawfcs0.tawfcs7 > div > div.a3yfdf0._21bfxf1 > div.a3yfdf0._5xlhbl5b._5xlhblhf._5xlhbl6n";
+    "#app > div > div:nth-child(7) > div > section > div:nth-child(2) > div > div > div > div > div > div._1ungv2r0._1viagsn4z._1viagsnr._1viagsnp._1viagsnhv._1viagsnhz._1viagsnbv._1viagsnbp._1viagsn8j._177offj0._177offj7 > div > div._1ungv2r0._21bfxf1 > div._1ungv2r0._1viagsn5b._1viagsnhf._1viagsn6n";
 
   const jobs = $(jobsContainer).children();
 
@@ -28,14 +28,9 @@ export const jobStreet = async ({
       .find(`span[data-automation="jobCardLocation"]`)
       .text()
       .trim();
-    const salary = job
-      .find(
-        "div.a3yfdf0._5xlhbl5b._5xlhblhf._5xlhbl6n > div:nth-child(2) > span > span",
-      )
-      .text()
-      .trim();
+
     const since = job
-      .find("div.a3yfdf0._5xlhbl5b._5xlhblhf._5xlhbl6v > span")
+      .find(`span[data-automation="jobListingDate"]`)
       .text()
       .trim();
     const description = job
@@ -58,10 +53,6 @@ export const jobStreet = async ({
         source: `https://id.jobstreet.com${source}`,
         description,
       };
-
-      if (typeof salary == "string" && salary != "") {
-        jobData.salary = salary.split("–")[1];
-      }
 
       result.push(jobData);
     }

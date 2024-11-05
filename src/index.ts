@@ -17,6 +17,9 @@ import { createContext } from "./context";
 import { init as initializeMongoDB } from "./config/mongodb";
 import { GraphQLSchema } from "graphql";
 import { graphqlUploadExpress } from "graphql-upload-ts";
+import { verifyToken } from "./helpers/jwt";
+import User from "./models/user.model";
+import pubsub from "./config/pubsub";
 
 // Separate schema configuration
 export const createApolloSchema = () =>
@@ -32,7 +35,86 @@ export const createApolloServer = (
     path: "/subscriptions",
   });
 
-  const serverCleanup = useServer({ schema }, wsServer);
+  const serverCleanup = useServer(
+    {
+      schema,
+      onConnect: async (ctx) => {
+        console.log();
+        console.log("----");
+        console.log("Connected", new Date());
+        if (ctx.connectionParams) {
+          const { headers } = ctx.connectionParams as {
+            headers: { authorization?: string };
+          };
+
+          if (headers) {
+            const authorization = headers?.authorization;
+            if (authorization) {
+              const token = authorization.split(" ")[1];
+              if (!token) throw new Error("Invalid Token");
+              const decoded = verifyToken(token);
+              const user = await User.findById(decoded._id);
+              console.log(token, "<<<<", user.username);
+              user.isOnline = 1;
+              await user.save();
+
+              pubsub.publish("USER_PRESENCE", { userPresence: user });
+
+              user.collections.forEach(async (collectionId) => {
+                pubsub.publish(
+                  `COLLECTION_USER_PRESENCE_${collectionId.toString()}`,
+                  {
+                    collectionUserPresence: user,
+                  },
+                );
+              });
+            }
+          }
+        }
+        console.log("----");
+        console.log();
+      },
+      onDisconnect: async (ctx) => {
+        console.log();
+        console.log("----");
+        console.log("Disconnected", new Date());
+        if (ctx.connectionParams) {
+          const { headers } = ctx.connectionParams as {
+            headers: { authorization?: string };
+          };
+          if (headers) {
+            const authorization = headers?.authorization;
+            if (authorization) {
+              const token = authorization.split(" ")[1];
+              if (!token) throw new Error("Invalid Token");
+              const decoded = verifyToken(token);
+              const user = await User.findById(decoded._id);
+
+              console.log(token, "<<<<", user.username);
+
+              user.isOnline = -1;
+
+              await user.save();
+
+              pubsub.publish("USER_PRESENCE", { userPresence: user });
+
+              user.collections.forEach(async (collectionId) => {
+                pubsub.publish(
+                  `COLLECTION_USER_PRESENCE_${collectionId.toString()}`,
+                  {
+                    collectionUserPresence: user,
+                  },
+                );
+              });
+            }
+          }
+        }
+        console.log("----");
+        console.log();
+      },
+    },
+    wsServer,
+  );
 
   return new ApolloServer({
     schema,
