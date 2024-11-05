@@ -23,6 +23,7 @@ import { GraphQLUpload } from "graphql-upload-ts";
 import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
 
 import pubsub from "../config/pubsub";
+import mongoose from "mongoose";
 
 export const typeDefs = `#graphql
   
@@ -163,6 +164,9 @@ export const resolvers = {
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error("User id is invalid");
+      }
       const user = await User.findById(userId).populate("collections");
       if (!user) {
         throw new Error("No User Found");
