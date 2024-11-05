@@ -720,6 +720,35 @@ describe("GraphQL Integration Tests for User Schema", () => {
       });
     });
 
+    describe("should update user online presence", () => {
+      let token: string;
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+      });
+
+      it("should successfully update user online presence", async () => {
+        const mutation = `
+          mutation UpdateUserPresence($isOnline: Boolean!) {
+            updateUserPresence(isOnline: $isOnline) {
+              _id
+              email
+              username
+              isOnline
+            }
+          }
+          `;
+
+        const response = await performMutation(token, mutation,{ isOnline: true })
+        expect(response.status).toBe(200)
+        expect(response.body.data.updateUserPresence).toBeDefined()
+        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 1})
+      });
+    });
+
     describe("User Profile Add Mutations", () => {
       it("should add an experience to a user’s profile", async () => {
         const addExperienceMutation = `
