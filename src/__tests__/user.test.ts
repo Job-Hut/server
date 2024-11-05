@@ -1,6 +1,9 @@
 import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
+import mongoose from "mongoose";
+import { createReadStream } from "fs"; // Import fs to read a file if needed
+import path from "path"; // Import path to manage file paths
 
 describe("GraphQL Integration Tests for User Schema", () => {
   let app: Express;
@@ -364,23 +367,27 @@ describe("GraphQL Integration Tests for User Schema", () => {
   });
 
   it("should fetch a user by ID", async () => {
-    const registerMutation = `
-      mutation {
-        register(input: {
-          username: "testuser2",
-          avatar: "http://example.com/avatar2.png",
-          fullName: "Test User 2",
-          email: "testuser2@example.com",
-          password: "password123A"
-        }) {
+    const getUserQuery = `
+      query GetAllUsers {
+        getAllUsers {
           _id
+          username
+          avatar
+          fullName
+          email
+          password
+          isOnline
+          createdAt
+          updatedAt
         }
       }
     `;
-    const registerResponse = await request(app)
+
+    const getUsersResponse = await request(app)
       .post("/graphql")
-      .send({ query: registerMutation });
-    const userId = registerResponse.body.data.register._id;
+      .send({ query: getUserQuery });
+
+    const userId = getUsersResponse.body.data.getAllUsers[0]._id;
 
     const query = `
       query {
@@ -395,8 +402,51 @@ describe("GraphQL Integration Tests for User Schema", () => {
 
     const response = await request(app).post("/graphql").send({ query });
     expect(response.status).toBe(200);
-    expect(response.body.data.getUserById).toBeDefined();
-    expect(response.body.data.getUserById.username).toBe("testuser2");
+    expect(response.body.data.getUserById).toMatchObject({
+      username: "newuser",
+      fullName: "New User",
+      email: "newuser@example.com",
+    });
+  });
+
+  it("should fail to fetch a user by invalid ID", async () => {
+    const invalidUserId = "nonexistentUserId123";
+
+    const query = `
+      query {
+        getUserById(userId: "${invalidUserId}") {
+          _id
+          username
+          fullName
+          email
+        }
+      }
+    `;
+
+    const response = await request(app).post("/graphql").send({ query });
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toContain("User id is invalid");
+  });
+
+  it("should return an error for a valid ObjectId with no matching user", async () => {
+    const validButNonexistentUserId = new mongoose.Types.ObjectId().toString(); // Valid ObjectId but not in database
+
+    const query = `
+      query {
+        getUserById(userId: "${validButNonexistentUserId}") {
+          _id
+          username
+          fullName
+          email
+        }
+      }
+    `;
+
+    const response = await request(app).post("/graphql").send({ query });
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toContain("No User Found");
   });
 
   it("should return all user's data", async () => {
@@ -417,16 +467,20 @@ describe("GraphQL Integration Tests for User Schema", () => {
     `;
 
     const response = await request(app).post("/graphql").send({ query });
-    const usernames = response.body.data.getAllUsers.map(user => ({ username: user.username }));
-    
-    expect(response.status).toBe(200)
-    expect(usernames).toEqual(expect.arrayContaining([
-      { username: "newuser" },
-      { username: "qwertyuiop" },
-      { username: "duplicateEmailUser" },
-      { username: "duplicateUsername" },
-    ]));
-  })
+    const usernames = response.body.data.getAllUsers.map((user) => ({
+      username: user.username,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(usernames).toEqual(
+      expect.arrayContaining([
+        { username: "newuser" },
+        { username: "qwertyuiop" },
+        { username: "duplicateEmailUser" },
+        { username: "duplicateUsername" },
+      ]),
+    );
+  });
 
   describe("User Profile Bio, Location, and JobPrefs Mutations", () => {
     let token: string;
@@ -566,6 +620,28 @@ describe("GraphQL Integration Tests for User Schema", () => {
         "newuser@example.com",
         "StrongPassword123",
       );
+    });
+
+    describe("updateAvatar Mutation", () => {
+
+      it("should successfully update the avatar URL for the logged-in user", async () => {
+        const avatarPath = path.join(__dirname, "mockAvatar.png");
+        const avatarFile = createReadStream(avatarPath); 
+
+        const mutation = `
+          mutation UpdateAvatar($avatar: Upload!) {
+            updateAvatar(avatar: $avatar) {
+              _id
+              avatar
+            }
+          }
+        `;
+
+        const response = await performMutation(token, mutation, { avatar: avatarFile });
+  
+        expect(response.status).toBe(200)
+        expect(response.body.data.updateAvatar.avatar).toBeDefined();
+      });
     });
 
     describe("User Profile Add Mutations", () => {
