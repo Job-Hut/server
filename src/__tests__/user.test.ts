@@ -730,7 +730,7 @@ describe("GraphQL Integration Tests for User Schema", () => {
         );
       });
 
-      it("should successfully update user online presence", async () => {
+      it("should successfully update user online presence to 1", async () => {
         const mutation = `
           mutation UpdateUserPresence($isOnline: Boolean!) {
             updateUserPresence(isOnline: $isOnline) {
@@ -746,6 +746,24 @@ describe("GraphQL Integration Tests for User Schema", () => {
         expect(response.status).toBe(200)
         expect(response.body.data.updateUserPresence).toBeDefined()
         expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 1})
+      });
+
+      it("should successfully update user online presence to 0 (offline)", async () => {
+        const mutation = `
+          mutation UpdateUserPresence($isOnline: Boolean!) {
+            updateUserPresence(isOnline: $isOnline) {
+              _id
+              email
+              username
+              isOnline
+            }
+          }
+          `;
+
+        const response = await performMutation(token, mutation,{ isOnline: false })
+        expect(response.status).toBe(200)
+        expect(response.body.data.updateUserPresence).toBeDefined()
+        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: 0})
       });
     });
 
