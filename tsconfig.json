@@ -10,5 +10,6 @@
     "types": ["node", "jest", "bcrypt"],
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "src/**/*.test.ts"]
 }
