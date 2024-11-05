@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 
-export const profileSchema = new mongoose.Schema({
-    bio : {
-      type: String
+export const profileSchema = new mongoose.Schema(
+  {
+    bio: {
+      type: String,
     },
     location: {
       type: String,
@@ -15,18 +16,18 @@ export const profileSchema = new mongoose.Schema({
       {
         jobTitle: {
           type: String,
-          required: true
+          required: true,
         },
         institute: {
           type: String,
-          required: true
+          required: true,
         },
         startDate: {
-          type: Date, 
-          required: true
+          type: Date,
+          required: true,
         },
         endDate: {
-          type: Date, 
+          type: Date,
         },
       },
     ],
@@ -34,19 +35,19 @@ export const profileSchema = new mongoose.Schema({
       {
         name: {
           type: String,
-          required: true
+          required: true,
         },
         institute: {
           type: String,
-          required: true
+          required: true,
         },
         startDate: {
-          type: Date, 
-          required: true
+          type: Date,
+          required: true,
         },
         endDate: {
-          type: Date, 
-          required: true
+          type: Date,
+          required: true,
         },
       },
     ],
@@ -54,26 +55,28 @@ export const profileSchema = new mongoose.Schema({
       {
         number: {
           type: String,
-          required: true
+          required: true,
         },
         name: {
           type: String,
-          required: true
+          required: true,
         },
         issuedBy: {
           type: String,
-          required: true
+          required: true,
         },
         issuedAt: {
-          type: Date, 
-          required: true
+          type: Date,
+          required: true,
         },
         expiryDate: {
-          type: Date, 
-          required: true
+          type: Date,
+          required: true,
         },
       },
     ],
-  }, { timestamps: true });
-  
+  },
+  { timestamps: true },
+);
+
 export const Profile = mongoose.model("Profile", profileSchema);

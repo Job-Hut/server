@@ -1,10 +1,11 @@
 import { signToken } from "../helpers/jwt";
+
 import {
   EducationInput,
   ExperienceInput,
   LicenseInput,
   RegisterInput,
-} from "../helpers/types";
+} from "../lib/types";
 import User, {
   register,
   login,
@@ -18,25 +19,32 @@ import User, {
   updateLicense,
   deleteLicense,
 } from "../models/user.model";
+import { GraphQLUpload } from "graphql-upload-ts";
+import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
+
+import pubsub from "../config/pubsub";
 
 export const typeDefs = `#graphql
   
   scalar Date
+  scalar Upload
 
   type User {
-    _id: String!
+    _id: ID!
     username: String!
     avatar: String
     fullName: String!
     email: String!
     password: String!
     profile: Profile
+    collections: [Collection]
+    isOnline: Boolean!
     createdAt: Date
     updatedAt: Date
   }
 
   type Profile {
-    _id: String!
+    _id: ID!
     bio: String
     location: String
     jobPrefs: [String]
@@ -48,7 +56,7 @@ export const typeDefs = `#graphql
   }
 
   type Experience {
-    _id: String!
+    _id: ID!
     jobTitle: String!
     institute: String!
     startDate: Date!
@@ -56,7 +64,7 @@ export const typeDefs = `#graphql
   }
 
   type Education {
-    _id: String!
+    _id: ID!
     name: String!
     institute: String!
     startDate: Date!
@@ -64,7 +72,7 @@ export const typeDefs = `#graphql
   }
 
   type License {
-    _id: String!
+    _id: ID!
     number: String!
     name: String!
     issuedBy: String!
@@ -110,7 +118,7 @@ export const typeDefs = `#graphql
   }
   
   type Query {
-    getUsers: [User]
+    getAllUsers(keyword: String): [User]
     getUserById(userId: String!): User
     getAuthenticatedUser: User
   }
@@ -118,6 +126,7 @@ export const typeDefs = `#graphql
   type Mutation {
     register(input: RegisterInput): User!
     login(email: String!, password: String!): AuthPayload!
+    updateAvatar(avatar: Upload): User
     updateLocation(location: String): Profile!
     updateBio(bio: String): Profile!
     updateJobPrefs(jobPrefs: [String]): Profile!
@@ -130,25 +139,43 @@ export const typeDefs = `#graphql
     addLicense(input: LicenseInput): Profile!
     updateLicense(licenseId: String!, input: LicenseInput): Profile!
     deleteLicense(licenseId: String!): Profile!
+    updateUserPresence(isOnline: Boolean!): User
   }
 
+  type Subscription {
+    userPresence: User
+  }
 `;
 
 export const resolvers = {
+  Upload: GraphQLUpload,
   Query: {
-    getUsers: async () => {
+    getAllUsers: async (_: unknown, { keyword }) => {
+      if (keyword) {
+        return await User.find({
+          $or: [
+            { username: { $regex: keyword, $options: "i" } },
+            { email: { $regex: keyword, $options: "i" } },
+            { fullName: { $regex: keyword, $options: "i" } },
+          ],
+        });
+      }
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
-      const user = await User.findById(userId);
-      if(!user) {
-        throw new Error("No User Found")
+      const user = await User.findById(userId).populate("collections");
+      if (!user) {
+        throw new Error("No User Found");
       }
       return user;
     },
     getAuthenticatedUser: async (_: unknown, __: unknown, context) => {
       const loggedUser = await context.authentication();
-      return await User.findById(loggedUser._id);
+      const user = await User.findById(loggedUser).populate("collections");
+      if (!user) {
+        throw new Error("No User Found");
+      }
+      return user;
     },
   },
   Mutation: {
@@ -186,6 +213,26 @@ export const resolvers = {
         };
       } catch (error) {
         throw new Error("Login failed: " + error.message);
+      }
+    },
+    updateAvatar: async (_: unknown, { avatar }, context) => {
+      try {
+        const loggedUser = await context.authentication();
+        const upload = await uploadToCloudinary(avatar);
+
+        if (!upload) throw new Error("Upload Failed");
+
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          { avatar: upload },
+          { new: true },
+        );
+
+        if (!user) throw new Error("User not found");
+
+        return user;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
       }
     },
     updateLocation: async (
@@ -345,6 +392,31 @@ export const resolvers = {
       } catch (error) {
         throw new Error("Delete Failed: " + error.message);
       }
+    },
+    updateUserPresence: async (_: unknown, { isOnline }, context) => {
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
+
+      if (!user) throw new Error("User not found");
+
+      user.isOnline = isOnline;
+      await user.save();
+
+      pubsub.publish("USER_PRESENCE", { userPresence: user });
+
+      user.collections.forEach(async (collectionId) => {
+        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId.toString()}`, {
+          collectionUserPresence: user,
+        });
+      });
+
+      return user;
+    },
+  },
+  Subscription: {
+    userPresence: {
+      subscribe: () => pubsub.asyncIterator("USER_PRESENCE"),
     },
   },
 };

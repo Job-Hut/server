@@ -6,4 +6,12 @@ module.exports = {
   },
   modulePathIgnorePatterns: ["./dist"],
   setupFiles: ["<rootDir>/src/__tests__/setup.ts"],
+  coveragePathIgnorePatterns: [
+    "node_modules",
+    "test-config",
+    "interfaces",
+    "jestGlobalMocks.ts",
+    ".module.ts",
+    ".mock.ts",
+  ],
 };
