@@ -1,4 +1,5 @@
 import Application from "../models/application.model";
+import User from "../models/user.model";
 import model from "../services/ai/gemini";
 
 export const typeDefs = `#graphql
@@ -56,6 +57,7 @@ export const typeDefs = `#graphql
 
   type Query {
     getAllApplication: [Application]
+    getSortedByPriorityApplication: [Application]
     getApplicationById(_id: ID!): Application
     getTasksGeneratedByAi(_id: ID!): [Task]
     getAdviceForApplicationByAi(_id: ID!): String
@@ -74,9 +76,84 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Query: {
     getAllApplication: async (_, __, context) => {
-      await context.authentication();
-      return await Application.find();
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
+
+      if (!user) throw new Error("User not found");
+
+      const result = await Application.find({ ownerId: user._id });
+      return result;
     },
+    getSortedByPriorityApplication: async (_, __, context) => {
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
+      if (!user) throw new Error("User not found");
+
+      const currentDate = new Date();
+
+      const result = await Application.aggregate([
+        { $match: { ownerId: user._id } },
+        {
+          $project: {
+            _id: 1,
+            ownerId: 1,
+            collectionId: 1,
+            jobTitle: 1,
+            description: 1,
+            organizationName: 1,
+            organizationAddress: 1,
+            organizationLogo: 1,
+            location: 1,
+            salary: 1,
+            type: 1,
+            startDate: 1,
+            endDate: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            tasks: {
+              $filter: {
+                input: "$tasks",
+                as: "task",
+                cond: {
+                  $and: [
+                    { $eq: ["$$task.completed", false] },
+                    { $gte: ["$$task.dueDate", currentDate] },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        { $unwind: "$tasks" },
+        { $sort: { "tasks.dueDate": 1 } },
+        { $limit: 1 },
+        {
+          $group: {
+            _id: "$_id",
+            ownerId: { $first: "$ownerId" },
+            collectionId: { $first: "$collectionId" },
+            jobTitle: { $first: "$jobTitle" },
+            description: { $first: "$description" },
+            organizationName: { $first: "$organizationName" },
+            organizationAddress: { $first: "$organizationAddress" },
+            organizationLogo: { $first: "$organizationLogo" },
+            location: { $first: "$location" },
+            salary: { $first: "$salary" },
+            type: { $first: "$type" },
+            startDate: { $first: "$startDate" },
+            endDate: { $first: "$endDate" },
+            createdAt: { $first: "$createdAt" },
+            updatedAt: { $first: "$updatedAt" },
+            tasks: { $push: "$tasks" },
+          },
+        },
+      ]);
+
+      return result;
+    },
+
     getApplicationById: async (_, { _id }, context) => {
       await context.authentication();
       const result = await Application.findById(_id);
@@ -91,14 +168,29 @@ export const resolvers = {
 
       delete user.password;
       const result = await model.generateContent([
-        "generate tasks the user must take in order to complete the application",
+        "given this user and application, generate tasks for the user to complete and prepare for the interview process from start to end",
         JSON.stringify(user),
         JSON.stringify(application),
-        "provide result in json format for easy parsing where each task contain title, description, due date, and completion status false by default starting from the current date, where the current date is ",
+        `
+        provide result in format of  {
+          title: 'the title of the task',
+          description: 'the description of the task',
+          dueDate: 'the due date of the task',
+          createdAt: 'the date the task was created',
+          updatedAt: 'the date the task was updated',
+          completed: false
+        }
+        dueDate should be days from the currentDate where the currentDate is 
+         `,
         new Date().toISOString(),
       ]);
+
       const content = JSON.parse(result.response.text());
-      return content.tasks;
+
+      application.tasks.push(...content);
+      await application.save();
+
+      return content;
     },
 
     getAdviceForApplicationByAi: async (_, { _id }, context) => {

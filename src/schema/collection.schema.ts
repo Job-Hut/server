@@ -1,4 +1,3 @@
-
 import pubsub from "../config/pubsub";
 import mongoose from "mongoose";
 import Application from "../models/application.model";
@@ -9,7 +8,8 @@ export const typeDefs = `#graphql
   scalar Date
 
   type Message {
-    senderId: String
+    _id: ID
+    senderId: User
     content: String
     createdAt: String
     updatedAt: String
@@ -77,7 +77,7 @@ export const typeDefs = `#graphql
 
   type Subscription {
     newMessage(collectionId: ID!): Message
-    collectionUserPresence(collectionId: ID!): User
+    collectionUserPresence(collectionId: ID!): [User]
   }
 `;
 
@@ -86,7 +86,9 @@ export const resolvers = {
     getAllCollection: async (_, __, context) => {
       const user = await context.authentication();
       if (!user) throw new Error("User not found");
-      return await Collection.find({ ownerId: user._id })
+      return await Collection.find({
+        $or: [{ ownerId: user._id }, { sharedWith: user._id }],
+      })
         .populate("sharedWith")
         .populate("applications");
     },
@@ -97,17 +99,17 @@ export const resolvers = {
         throw new Error("Collection not found");
       }
       const collection = await Collection.findOne({
-        _id: id,
-        ownerId: user._id,
+        $and: [
+          { _id: id },
+          { $or: [{ ownerId: user._id }, { sharedWith: user._id }] },
+        ],
       })
         .populate("sharedWith")
-        .populate("applications");
+        .populate("applications")
+        .populate("chat.senderId");
 
-      if (
-        !collection ||
-        (!collection.ownerId.equals(user._id) &&
-          !collection.sharedWith.includes(user._id))
-      ) {
+      console.log(collection);
+      if (!collection) {
         throw new Error(
           "Collection not found or you do not have permission to view it.",
         );
@@ -181,15 +183,28 @@ export const resolvers = {
         updatedAt: new Date(),
       });
       await collection.save();
+
+      await collection.populate("chat.senderId");
+
       pubsub.publish(`COLLECTION_NEW_MESSAGE_${collectionId}`, {
         newMessage: collection.chat[collection.chat.length - 1],
       });
+
       return collection;
     },
 
     addUsersToCollection: async (_, { collectionId, userIds }) => {
       const collection = await Collection.findById(collectionId);
       if (!collection) throw new Error("Collection not found");
+
+      userIds.forEach((userId) => {
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+          throw new Error("Invalid user ID");
+        }
+        if (collection.sharedWith.includes(userId)) {
+          throw new Error("User already shared with");
+        }
+      });
 
       collection.sharedWith.push(...userIds);
       await collection.save();

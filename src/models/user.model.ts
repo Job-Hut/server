@@ -38,11 +38,11 @@ const userSchema = new mongoose.Schema(
           ref: "Collection",
         },
       ],
-      default: []
+      default: [],
     },
     isOnline: {
-      type: Boolean,
-      default: false,
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true },
