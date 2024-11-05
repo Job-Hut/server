@@ -39,7 +39,7 @@ export const typeDefs = `#graphql
     password: String!
     profile: Profile
     collections: [Collection]
-    isOnline: Boolean!
+    isOnline: Int!
     createdAt: Date
     updatedAt: Date
   }
@@ -404,7 +404,14 @@ export const resolvers = {
 
       if (!user) throw new Error("User not found");
 
-      user.isOnline = isOnline;
+      console.log(user.username, "--", isOnline);
+
+      if (isOnline) {
+        user.isOnline += 1;
+      } else {
+        user.isOnline -= 1;
+      }
+
       await user.save();
 
       pubsub.publish("USER_PRESENCE", { userPresence: user });

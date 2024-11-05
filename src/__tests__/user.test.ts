@@ -2,8 +2,8 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import mongoose from "mongoose";
-import { createReadStream } from "fs"; // Import fs to read a file if needed
-import path from "path"; // Import path to manage file paths
+import { createReadStream } from "fs";
+import path from "path";
 
 describe("GraphQL Integration Tests for User Schema", () => {
   let app: Express;
@@ -642,6 +642,81 @@ describe("GraphQL Integration Tests for User Schema", () => {
 
         expect(response.status).toBe(200);
         expect(response.body.data.updateAvatar.avatar).toBeDefined();
+      });
+    });
+
+    describe("get authenticate user data", () => {
+      let token: string;
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+      });
+
+      it("Should retrieve the authenticated user data when the user is authenticated", async () => {
+        const query = `
+          query Query {
+            getAuthenticatedUser {
+              _id
+              email
+              username
+            }
+          }
+        `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ query });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.getAuthenticatedUser).toBeDefined();
+      });
+
+      it("Should return an error when no valid token is provided", async () => {
+        const query = `
+          query Query {
+            getAuthenticatedUser {
+              _id
+              email
+              username
+            }
+          }
+        `;
+
+        const response = await request(app).post("/graphql").send({ query });
+
+        expect(response.status).toBe(200);
+
+        expect(response.body.errors).toBeDefined();
+        expect(response.body.errors[0].message).toBe(
+          "You have to login first!",
+        );
+      });
+
+      it("Should retrieve the authenticated user data when the user is authenticated", async () => {
+        const query = `
+          query GetAuthenticatedUser {
+            getAuthenticatedUser {
+              _id
+              username
+              email
+            }
+          }
+        `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ query });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.getAuthenticatedUser).toBeDefined();
+        expect(response.body.data.getAuthenticatedUser._id).toBeDefined();
+        expect(response.body.data.getAuthenticatedUser.email).toBeDefined();
+        expect(response.body.data.getAuthenticatedUser.username).toBeDefined();
       });
     });
 
