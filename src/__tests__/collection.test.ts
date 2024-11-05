@@ -12,8 +12,6 @@ describe("Collection", () => {
   let user;
   let accessToken;
   let collection;
-  let sharedWith;
-  let applications;
   let user1;
   let user2;
 
@@ -32,51 +30,16 @@ describe("Collection", () => {
       username: user.username,
       email: user.email,
     });
+    await Collection.deleteMany({ ownerId: user._id });
 
     collection = new Collection({
       name: "Backend",
       description: "List of backend application",
       ownerId: user._id,
-      sharedWith: [
-        // "648f1e0a9b1d1e04f74e5a06",
-        // "648f1e0a9b1d1e04f74e5a07"
-      ],
-      applications: [
-        // {
-        //   ownerId: user._id,
-        //   collectionId: null,
-        //   jobTitle: "Software Engineer",
-        //   description: "Software Engineer at Google",
-        //   organizationName: "Google",
-        //   organizationAddress: "Mountain View, CA",
-        //   organizationLogo: "https://google.com/logo.png",
-        //   location: "Mountain View, CA",
-        //   salary: 150000,
-        //   type: "Full-time",
-        //   startDate: "2022-01-01",
-        //   endDate: "2022-12-31",
-        //   tasks: [
-        //     {
-        //       title: "Task 1",
-        //       description: "Task 1 description",
-        //       completed: false,
-        //       dueDate: "2022-01-01",
-        //     },
-        //   ],
-        // },
-      ],
-      chat: [
-        // {
-        //   _id: "648f1e0a9b1d1e04f74e5a0d",
-        //   senderId: "648f1e0a9b1d1e04f74e5a05",
-        //   content: "Has anyone heard back from their interviews?",
-        // },
-      ],
+      sharedWith: [],
+      applications: [],
+      chat: [],
     });
-
-    // sharedWith = collection.sharedWith[0];
-    // applications = collection.application[0];
-    // chat = collection.chat[0];
 
     await collection.save();
   });
@@ -93,8 +56,6 @@ describe("Collection", () => {
           name
           description
           ownerId
-          sharedWith
-          applications
           createdAt
           updatedAt
         }
@@ -116,8 +77,6 @@ describe("Collection", () => {
           name
           description
           ownerId
-          sharedWith
-          applications
           createdAt
           updatedAt
         }
@@ -126,8 +85,8 @@ describe("Collection", () => {
 
     const variables = {
       input: {
-        name: "Backend",
-        description: "List of backend applications",
+        name: "Frontend",
+        description: "List of frontend application",
       },
     };
 
@@ -138,9 +97,9 @@ describe("Collection", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.createCollection).toBeDefined();
-    expect(response.body.data.createCollection.name).toBe("Backend");
+    expect(response.body.data.createCollection.name).toBe("Frontend");
     expect(response.body.data.createCollection.description).toBe(
-      "List of backend applications",
+      "List of frontend application",
     );
     expect(response.body.data.createCollection.ownerId).toBe(
       user._id.toString(),
@@ -155,8 +114,6 @@ describe("Collection", () => {
           name
           description
           ownerId
-          sharedWith
-          applications
           createdAt
           updatedAt
         }
@@ -456,6 +413,7 @@ describe("Collection", () => {
   });
 
   it("Should add applications to a collection successfully when the user is the owner", async () => {
+    // Membuat collection baru
     const collection = new Collection({
       name: "My Collection",
       description: "This is my collection.",
@@ -464,6 +422,7 @@ describe("Collection", () => {
     });
     await collection.save();
 
+    // Membuat 2 aplikasi baru
     const application1 = new Application({
       jobTitle: "Dev",
       ownerId: user._id,
@@ -479,7 +438,9 @@ describe("Collection", () => {
       mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
         addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
           _id
-          applications
+          applications {
+            _id 
+          }
         }
       }
     `;
@@ -501,8 +462,8 @@ describe("Collection", () => {
     expect(response.body.data.addApplicationsToCollection).toBeDefined();
     expect(response.body.data.addApplicationsToCollection.applications).toEqual(
       expect.arrayContaining([
-        application1._id.toString(),
-        application2._id.toString(),
+        { _id: application1._id.toString() },
+        { _id: application2._id.toString() },
       ]),
     );
   });
@@ -534,7 +495,9 @@ describe("Collection", () => {
       mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
         addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
           _id
-          applications
+          applications {
+            _id  
+          }
         }
       }
     `;
@@ -549,11 +512,11 @@ describe("Collection", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ query, variables });
 
-    expect(response.status).toBe(200);
     expect(response.body.errors).toBeDefined();
     expect(response.body.errors[0].message).toBe(
       "Collection not found or you do not have permission to update it.",
     );
+    expect(response.status).toBe(200);
   });
 
   it("Should return an error when one or more applications are not owned by the current user", async () => {
@@ -580,7 +543,9 @@ describe("Collection", () => {
       mutation AddApplicationsToCollection($collectionId: ID!, $applicationIds: [ID!]!) {
         addApplicationsToCollection(collectionId: $collectionId, applicationIds: $applicationIds) {
           _id
-          applications
+          applications {
+            _id
+          }
         }
       }
     `;
@@ -629,7 +594,9 @@ describe("Collection", () => {
       mutation RemoveApplicationFromCollection($collectionId: ID!, $applicationId: ID!) {
         removeApplicationFromCollection(collectionId: $collectionId, applicationId: $applicationId) {
           _id
-          applications
+          applications {
+            _id
+          }
         }
       }
     `;
@@ -834,7 +801,9 @@ describe("Collection", () => {
       mutation AddUsersToCollection($collectionId: ID!, $userIds: [ID!]!) {
         addUsersToCollection(collectionId: $collectionId, userIds: $userIds) {
           _id
-          sharedWith
+          sharedWith {
+            _id
+          }
         }
       }
     `;
@@ -848,7 +817,7 @@ describe("Collection", () => {
     expect(response.body.data.addUsersToCollection).toBeDefined();
 
     const sharedWith = response.body.data.addUsersToCollection.sharedWith.map(
-      (id) => id.toString(),
+      (user) => user._id.toString(),
     );
 
     expect(sharedWith.length).toBe(2);
@@ -924,7 +893,9 @@ describe("Collection", () => {
       mutation RemoveUsersFromCollection($collectionId: ID!, $userIds: [ID!]!) {
         removeUsersFromCollection(collectionId: $collectionId, userIds: $userIds) {
           _id
-          sharedWith
+          sharedWith {
+            _id
+          }
         }
       }
     `;
@@ -946,7 +917,10 @@ describe("Collection", () => {
 
     const updatedCollection = await Collection.findById(collection._id);
 
-    expect(updatedCollection.sharedWith).not.toContain(user2._id.toString());
+    const updatedSharedWith = updatedCollection.sharedWith.map((id) =>
+      id.toString(),
+    );
+    expect(updatedSharedWith).not.toContain(user2._id.toString());
   });
 
   it("Should return an error when the collection does not exist", async () => {
