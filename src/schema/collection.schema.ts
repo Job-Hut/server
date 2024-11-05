@@ -108,7 +108,6 @@ export const resolvers = {
         .populate("applications")
         .populate("chat.senderId");
 
-      console.log(collection);
       if (!collection) {
         throw new Error(
           "Collection not found or you do not have permission to view it.",

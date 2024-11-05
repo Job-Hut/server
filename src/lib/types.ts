@@ -112,6 +112,7 @@ export interface JobVacancy {
   since: string;
   salary?: string;
   source: string;
+  sourceUrl: string;
 }
 
 export type RegisterInput = {

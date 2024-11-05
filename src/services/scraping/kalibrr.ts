@@ -46,7 +46,8 @@ export const kalibrr = async ({
           location: `${job.google_location?.address_components?.region}, ${job.google_location?.address_components?.city}`,
           since: job.activation_date,
           salary: job.salary || null,
-          source: `https://www.kalibrr.id/c/${job.company.code}/jobs/${job.id}/human-capital-business-partner-specialist`,
+          source: "Kalibrr",
+          sourceUrl: `https://www.kalibrr.id/c/${job.company.code}/jobs/${job.id}/human-capital-business-partner-specialist`,
           description: cheerio.load(job.description).text(),
         });
       },

@@ -71,7 +71,7 @@ export async function register(
       throw new Error("All fields are required.");
     }
 
-    avatar = avatar || ""; 
+    avatar = avatar || "";
 
     validatePassword(password);
 
@@ -163,9 +163,10 @@ async function updateProfileField(
     }
   }
 
-
-  await userProfile.save().catch(error => {
-    throw new Error("Failed to save user. Please try again later." + error.message);
+  await userProfile.save().catch((error) => {
+    throw new Error(
+      "Failed to save user. Please try again later." + error.message,
+    );
   });
 
   const updatedUserProfile = await User.findById(userId).select(`profile`);

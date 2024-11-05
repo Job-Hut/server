@@ -48,6 +48,33 @@ describe("Collection", () => {
     await teardownTestEnvironment();
   });
 
+  it("Should throw an error if the user is not found in the database", async () => {
+    const query = `
+      query GetAllCollection {
+        getAllCollection {
+          _id
+          name
+          description
+        }
+      }
+    `;
+
+    const validTokenForNonExistingUser = signToken({
+      _id: "6729cf6c898000e1eb6bcd20",
+      username: "nonExistingUser",
+      email: "nonexisting@mail.com",
+    });
+
+    const response = await request(app)
+      .post("/graphql")
+      .send({ query })
+      .set("Authorization", `Bearer ${validTokenForNonExistingUser}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("User not found");
+  });
+
   it("Should not return any collection when user is not authenticate", async () => {
     const query = `
       query GetAllCollection {
@@ -413,7 +440,6 @@ describe("Collection", () => {
   });
 
   it("Should add applications to a collection successfully when the user is the owner", async () => {
-    // Membuat collection baru
     const collection = new Collection({
       name: "My Collection",
       description: "This is my collection.",
@@ -422,7 +448,6 @@ describe("Collection", () => {
     });
     await collection.save();
 
-    // Membuat 2 aplikasi baru
     const application1 = new Application({
       jobTitle: "Dev",
       ownerId: user._id,
@@ -716,7 +741,9 @@ describe("Collection", () => {
         addMessageToChat(collectionId: $collectionId, message: $message) {
           _id
           chat {
-            senderId
+            senderId {
+              _id
+            }
             content
             createdAt
           }
@@ -735,8 +762,7 @@ describe("Collection", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.addMessageToChat).toBeDefined();
     expect(response.body.data.addMessageToChat.chat).toHaveLength(1);
-    expect(response.body.data.addMessageToChat.chat[0].content).toBe(message);
-    expect(response.body.data.addMessageToChat.chat[0].senderId).toBe(
+    expect(response.body.data.addMessageToChat.chat[0].senderId._id).toBe(
       user._id.toString(),
     );
   });

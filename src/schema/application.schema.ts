@@ -10,6 +10,7 @@ export const typeDefs = `#graphql
     title: String
     description: String
     completed: Boolean!
+    stage: String
     dueDate: Date
     createdAt: Date
     updatedAt: Date
@@ -59,8 +60,6 @@ export const typeDefs = `#graphql
     getAllApplication: [Application]
     getSortedByPriorityApplication: [Application]
     getApplicationById(_id: ID!): Application
-    getTasksGeneratedByAi(_id: ID!): [Task]
-    getAdviceForApplicationByAi(_id: ID!): String
   }
 
   type Mutation {
@@ -70,6 +69,8 @@ export const typeDefs = `#graphql
     addTaskToApplication(applicationId: ID!, task: TaskInput): Application
     removeTaskFromApplication(applicationId: ID!, taskId: ID!): Application
     updateTaskInApplication(applicationId: ID!, taskId: ID!, task: TaskInput): Application
+    getTasksGeneratedByAi(_id: ID!): [Task]
+    getAdviceForApplicationByAi(_id: ID!): String
   }
 `;
 
@@ -160,59 +161,6 @@ export const resolvers = {
       if (!result) throw new Error("Application not found");
       return result;
     },
-    getTasksGeneratedByAi: async (_, { _id }, context) => {
-      const user = await context.authentication();
-      const application = await Application.findById(_id);
-
-      if (!application) throw new Error("Application not found");
-
-      delete user.password;
-      const result = await model.generateContent([
-        "given this user and application, generate tasks for the user to complete and prepare for the interview process from start to end",
-        JSON.stringify(user),
-        JSON.stringify(application),
-        `
-        provide result in format of  {
-          title: 'the title of the task',
-          description: 'the description of the task',
-          dueDate: 'the due date of the task',
-          createdAt: 'the date the task was created',
-          updatedAt: 'the date the task was updated',
-          completed: false
-        }
-        dueDate should be days from the currentDate where the currentDate is 
-         `,
-        new Date().toISOString(),
-      ]);
-
-      const content = JSON.parse(result.response.text());
-
-      application.tasks.push(...content);
-      await application.save();
-
-      return content;
-    },
-
-    getAdviceForApplicationByAi: async (_, { _id }, context) => {
-      const user = await context.authentication();
-      const application = await Application.findById(_id);
-
-      if (!application) throw new Error("Application not found");
-
-      delete user.password;
-
-      const result = await model.generateContent([
-        "provide advice for the user to improve their application",
-        JSON.stringify(user),
-        JSON.stringify(application),
-        "provide result in long text format contain the advice for the user in format of { advice: 'the advice for the user' }",
-        "don't forget to provide the advice in a friendly and helpful manner",
-        "don't mention any negative feedback, only provide positive feedback",
-        "don't mention the json input format in the advice, rather mention the user and application details",
-      ]);
-      const content = JSON.parse(result.response.text());
-      return content.advice;
-    },
   },
 
   Mutation: {
@@ -289,6 +237,59 @@ export const resolvers = {
       await application.save();
 
       return application;
+    },
+    getTasksGeneratedByAi: async (_, { _id }, context) => {
+      const user = await context.authentication();
+      const application = await Application.findById(_id);
+
+      if (!application) throw new Error("Application not found");
+
+      delete user.password;
+      const result = await model.generateContent([
+        "given this user and application, generate tasks for the user to complete and prepare for the interview process from start to end",
+        JSON.stringify(user),
+        JSON.stringify(application),
+        `
+        provide result in format of  {
+          title: 'the title of the task',
+          description: 'the description of the task',
+          dueDate: 'the due date of the task',
+          createdAt: 'the date the task was created',
+          updatedAt: 'the date the task was updated',
+          completed: false
+        }
+        dueDate should be days from the currentDate where the currentDate is 
+         `,
+        new Date().toISOString(),
+      ]);
+
+      const content = JSON.parse(result.response.text());
+
+      application.tasks.push(...content);
+      await application.save();
+
+      return content;
+    },
+
+    getAdviceForApplicationByAi: async (_, { _id }, context) => {
+      const user = await context.authentication();
+      const application = await Application.findById(_id);
+
+      if (!application) throw new Error("Application not found");
+
+      delete user.password;
+
+      const result = await model.generateContent([
+        "provide advice for the user to improve their application",
+        JSON.stringify(user),
+        JSON.stringify(application),
+        "provide result in long text format contain the advice for the user in format of { advice: 'the advice for the user' }",
+        "don't forget to provide the advice in a friendly and helpful manner",
+        "don't mention any negative feedback, only provide positive feedback",
+        "don't mention the json input format in the advice, rather mention the user and application details",
+      ]);
+      const content = JSON.parse(result.response.text());
+      return content.advice;
     },
   },
 };
