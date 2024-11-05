@@ -1,27 +1,12 @@
+
+import pubsub from "../config/pubsub";
+import mongoose from "mongoose";
+import Application from "../models/application.model";
 import Collection from "../models/collection.model";
 import User from "../models/user.model";
-import { PubSub } from "graphql-subscriptions";
-
-const pubsub = new PubSub();
 
 export const typeDefs = `#graphql
   scalar Date
-
-  type Reply {
-    authorId: String
-    content: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  type Thread {
-    title: String
-    content: String
-    authorId: String
-    replies: [Reply]
-    createdAt: String
-    updatedAt: String
-  }
 
   type Message {
     senderId: String
@@ -34,22 +19,17 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String
     description: String
-    public: Boolean
-    ownerId: String
-    sharedWith: [String]
+    ownerId: ID!
+    sharedWith: [User]
     applications: [Application]
-    threads: [Thread]
     chat: [Message]
     createdAt: Date
     updatedAt: Date
   }
 
-  input ThreadInput {
-    title: String
-    content: String
-    authorId: String
-    createdAt: String
-    updatedAt: String
+  input CollectionInput {
+    name: String
+    description: String
   }
 
   type Query {
@@ -59,27 +39,14 @@ export const typeDefs = `#graphql
 
   type Mutation {
     createCollection(
-      name: String!
-      description: String!
-      public: Boolean!
-      ownerId: String!
-      sharedWith: [String]!
-      # applications: [Application]
-      # threads: [Thread]
-      # chat: [Chat]
+      input: CollectionInput
     ): Collection
 
     deleteCollection(id: ID!): Collection
 
     updateCollection(
       id: ID!
-      name: String
-      description: String
-      public: Boolean
-      sharedWith: [String]
-      # applications: [ApplicationInput]
-      # threads: [ThreadInput]
-      # chat: [ChatInput]
+      input: CollectionInput
     ): Collection
 
     addMessageToChat(
@@ -87,83 +54,120 @@ export const typeDefs = `#graphql
       message: String
     ): Collection
 
-    addUserToCollection(
+    addUsersToCollection(
       collectionId: ID!
-      userId: ID!
+      userIds: [ID!]!
     ): Collection
 
-     }
+    removeUsersFromCollection(
+      collectionId: ID!
+      userIds: [ID]!
+    ): Collection
+
+    addApplicationsToCollection(
+      collectionId: ID!
+      applicationIds: [ID!]!
+    ): Collection
+
+    removeApplicationFromCollection(
+      collectionId: ID!
+      applicationId: ID!
+    ): Collection
+  }
 
   type Subscription {
     newMessage(collectionId: ID!): Message
+    collectionUserPresence(collectionId: ID!): User
   }
 `;
 
 export const resolvers = {
   Query: {
-    getAllCollection: async () => {
-      return await Collection.find();
+    getAllCollection: async (_, __, context) => {
+      const user = await context.authentication();
+      if (!user) throw new Error("User not found");
+      return await Collection.find({ ownerId: user._id })
+        .populate("sharedWith")
+        .populate("applications");
     },
-    getCollectionById: async (_, { id }) => {
-      const result = await Collection.findById(id);
-      if (!result) throw new Error("Collection not found");
-      return result;
+
+    getCollectionById: async (_, { id }, context) => {
+      const user = await context.authentication();
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error("Collection not found");
+      }
+      const collection = await Collection.findOne({
+        _id: id,
+        ownerId: user._id,
+      })
+        .populate("sharedWith")
+        .populate("applications");
+
+      if (
+        !collection ||
+        (!collection.ownerId.equals(user._id) &&
+          !collection.sharedWith.includes(user._id))
+      ) {
+        throw new Error(
+          "Collection not found or you do not have permission to view it.",
+        );
+      }
+
+      return collection;
     },
   },
 
   Mutation: {
-    createCollection: async (
-      _,
-      { name, description, public: publicValue, ownerId },
-    ) => {
-      if (typeof publicValue !== "boolean") {
-        throw new Error("Public is required and must be a boolean");
-      }
+    createCollection: async (_, { input }, context) => {
+      const loggedUser = await context.authentication();
+
+      const user = await User.findById(loggedUser._id);
 
       const newCollection = new Collection({
-        name,
-        description,
-        public: publicValue,
-        ownerId,
+        ...input,
+        ownerId: user._id,
       });
-      return await newCollection.save();
+
+      await newCollection.save();
+
+      user.collections.push(newCollection._id);
+
+      await user.save();
+      return newCollection;
     },
 
-    deleteCollection: async (_, { id }) => {
-      const result = await Collection.findByIdAndDelete(id);
-      if (!result) throw new Error("Collection not found");
-      return result;
-    },
+    deleteCollection: async (_, { id }, context) => {
+      const user = await context.authentication();
+      const collection = await Collection.findById(id);
 
-    updateCollection: async (
-      _,
-      {
-        id,
-        name,
-        description,
-        public: publicValue,
-        sharedWith,
-        // applications,
-        // threads,
-        // chat,
-      },
-    ) => {
-      const exist = await Collection.findById(id);
-      if (!exist) {
-        throw new Error(`Collection with ID '${id}' not found.`);
+      if (!collection) throw new Error("Collection not found");
+      if (!collection.ownerId.equals(user._id)) {
+        throw new Error("You do not have permission to delete this collection");
       }
 
-      const updateData = {
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(publicValue !== undefined && { public: publicValue }),
-        ...(sharedWith && { sharedWith }),
-        // ...(applications && { applications }),
-        // ...(threads && { threads }),
-        // ...(chat && { chat }),
-      };
+      await Collection.findByIdAndDelete(id);
+      await User.updateMany(
+        { _id: { $in: collection.sharedWith } },
+        { $pull: { collections: id } },
+      );
 
-      return await Collection.findByIdAndUpdate(id, updateData, { new: true });
+      return collection;
+    },
+
+    updateCollection: async (_, { id, input }, context) => {
+      const user = await context.authentication();
+      const collection = await Collection.findById(id);
+
+      if (!collection) {
+        throw new Error("Collection not found");
+      }
+      if (!collection.ownerId.equals(user._id)) {
+        throw new Error(
+          "You do not have permission to update this collection.",
+        );
+      }
+
+      return await Collection.findByIdAndUpdate(id, input, { new: true });
     },
 
     addMessageToChat: async (_, { collectionId, message }, context) => {
@@ -177,20 +181,116 @@ export const resolvers = {
         updatedAt: new Date(),
       });
       await collection.save();
-      pubsub.publish(`NEW_MESSAGE_${collectionId}`, {
+      pubsub.publish(`COLLECTION_NEW_MESSAGE_${collectionId}`, {
         newMessage: collection.chat[collection.chat.length - 1],
       });
       return collection;
     },
 
-    addUserToCollection: async (_, { collectionId, userId }) => {
+    addUsersToCollection: async (_, { collectionId, userIds }) => {
       const collection = await Collection.findById(collectionId);
       if (!collection) throw new Error("Collection not found");
-      collection.sharedWith.push(userId);
+
+      collection.sharedWith.push(...userIds);
       await collection.save();
-      await User.findByIdAndUpdate(userId, {
-        $push: { collections: collectionId },
+
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $push: { collections: collectionId } },
+      );
+
+      return collection;
+    },
+
+    removeUsersFromCollection: async (_, { collectionId, userIds }) => {
+      const collection = await Collection.findById(collectionId);
+      if (!collection) throw new Error("Collection not found");
+
+      await Collection.findByIdAndUpdate(collectionId, {
+        $pull: { sharedWith: { $in: userIds } },
       });
+
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $pull: { collections: collectionId } },
+      );
+
+      return collection;
+    },
+
+    addApplicationsToCollection: async (
+      _,
+      { collectionId, applicationIds },
+      context,
+    ) => {
+      const user = await context.authentication();
+
+      const collection = await Collection.findOne({
+        _id: collectionId,
+        ownerId: user._id,
+      });
+
+      if (!collection) {
+        throw new Error(
+          "Collection not found or you do not have permission to update it.",
+        );
+      }
+      const applications = await Application.find({
+        _id: { $in: applicationIds },
+        ownerId: user._id,
+      });
+
+      if (applications.length !== applicationIds.length) {
+        throw new Error(
+          "One or more applications are not owned by the current user.",
+        );
+      }
+      if (!Array.isArray(collection.applications)) {
+        collection.applications = [];
+      }
+      collection.applications.push(...applicationIds);
+      await collection.save();
+
+      await Application.updateMany(
+        { _id: { $in: applicationIds } },
+        { $set: { collectionId: collectionId } },
+      );
+
+      return collection;
+    },
+
+    removeApplicationFromCollection: async (
+      _,
+      { collectionId, applicationId },
+      context,
+    ) => {
+      const user = await context.authentication();
+
+      if (!mongoose.isValidObjectId(collectionId)) {
+        throw new Error("Collection not found");
+      }
+
+      const collection = await Collection.findById(collectionId);
+      if (!collection) {
+        throw new Error("Collection not found");
+      }
+
+      if (!collection.ownerId.equals(user._id)) {
+        throw new Error(
+          "You are not authorized to remove applications from this collection",
+        );
+      }
+
+      collection.applications = collection.applications.filter(
+        (appId) => !appId.equals(applicationId),
+      );
+      await collection.save();
+
+      await Application.updateOne(
+        { _id: applicationId },
+        { $set: { collectionId: null } },
+      );
+
       return collection;
     },
   },
@@ -198,10 +298,13 @@ export const resolvers = {
   Subscription: {
     newMessage: {
       subscribe: async (_, { collectionId }) => {
-        return pubsub.asyncIterator(`NEW_MESSAGE_${collectionId}`);
+        return pubsub.asyncIterator(`COLLECTION_NEW_MESSAGE_${collectionId}`);
+      },
+    },
+    collectionUserPresence: {
+      subscribe: async (_, { collectionId }) => {
+        return pubsub.asyncIterator(`COLLECTION_USER_PRESENCE_${collectionId}`);
       },
     },
   },
-
-  // add bulk insert application [application]
 };

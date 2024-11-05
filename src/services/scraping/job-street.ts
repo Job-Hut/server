@@ -1,10 +1,13 @@
 import * as cheerio from "cheerio";
 import { JobVacancy } from "../../lib/types";
 
-export const jobStreet = async (
-  query: string = null,
-  page: number = 1,
-): Promise<JobVacancy[]> => {
+export const jobStreet = async ({
+  query = "",
+  page = 1,
+}: {
+  query?: string;
+  page?: number;
+}): Promise<JobVacancy[]> => {
   const $ = await cheerio.fromURL(
     `https://id.jobstreet.com/id/${query ? `${query}-jobs` : `jobs`}?page=${page}`,
   );
