@@ -8,6 +8,10 @@ export const profileSchema = new mongoose.Schema(
     location: {
       type: String,
     },
+    jobPrefs: {
+      type: [String], // This allows for an array of strings
+      required: false, // Set this according to your requirements
+    },
     experiences: [
       {
         jobTitle: {

@@ -52,7 +52,7 @@ const User = mongoose.model("User", userSchema);
 
 export async function register(
   username: string,
-  avatar: string,
+  avatar: string | undefined,
   fullName: string,
   email: string,
   password: string,
@@ -71,9 +71,7 @@ export async function register(
       throw new Error("All fields are required.");
     }
 
-    if (!avatar) {
-      avatar = "";
-    }
+    avatar = avatar || ""; 
 
     validatePassword(password);
 
@@ -92,6 +90,7 @@ export async function register(
     const newUserProfile = new Profile({
       bio: "",
       location: "",
+      jobPrefs: [],
       experiences: [],
       education: [],
       licenses: [],
@@ -164,9 +163,9 @@ async function updateProfileField(
     }
   }
 
-  await userProfile.save().catch((error) => {
-    console.error("Database save error:", error);
-    throw new Error("Failed to save user. Please try again later.");
+
+  await userProfile.save().catch(error => {
+    throw new Error("Failed to save user. Please try again later." + error.message);
   });
 
   const updatedUserProfile = await User.findById(userId).select(`profile`);

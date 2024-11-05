@@ -47,6 +47,7 @@ export const typeDefs = `#graphql
     _id: ID!
     bio: String
     location: String
+    jobPrefs: [String]
     experiences: [Experience]
     education: [Education]
     licenses: [License]
@@ -66,7 +67,7 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String!
     institute: String!
-    startDate: String!
+    startDate: Date!
     endDate: Date
   }
 
@@ -128,6 +129,7 @@ export const typeDefs = `#graphql
     updateAvatar(avatar: Upload): User
     updateLocation(location: String): Profile!
     updateBio(bio: String): Profile!
+    updateJobPrefs(jobPrefs: [String]): Profile!
     addExperience(input: ExperienceInput): Profile!
     updateExperience(experienceId: String!, input: ExperienceInput): Profile!
     deleteExperience(experienceId: String!): Profile!
@@ -265,6 +267,24 @@ export const resolvers = {
         throw new Error("Update Failed: " + error.message);
       }
     },
+    updateJobPrefs: async (
+      _: unknown,
+      { jobPrefs }: { jobPrefs: string[] },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          { "profile.jobPrefs": jobPrefs },
+          { new: true }
+        );
+        if (!user) throw new Error("User not found");
+        return user.profile;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },    
     addExperience: async (
       _: unknown,
       { input }: { input: ExperienceInput },
