@@ -6,5 +6,4 @@ export const init = async () => {
   await mongoose.connect(config.mongodb.connectionString, {
     dbName: config.mongodb.database,
   });
-  console.log("Connected to mongodb");
 };
