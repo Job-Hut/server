@@ -623,10 +623,9 @@ describe("GraphQL Integration Tests for User Schema", () => {
     });
 
     describe("updateAvatar Mutation", () => {
-
       it("should successfully update the avatar URL for the logged-in user", async () => {
         const avatarPath = path.join(__dirname, "mockAvatar.png");
-        const avatarFile = createReadStream(avatarPath); 
+        const avatarFile = createReadStream(avatarPath);
 
         const mutation = `
           mutation UpdateAvatar($avatar: Upload!) {
@@ -637,10 +636,41 @@ describe("GraphQL Integration Tests for User Schema", () => {
           }
         `;
 
-        const response = await performMutation(token, mutation, { avatar: avatarFile });
-  
-        expect(response.status).toBe(200)
+        const response = await performMutation(token, mutation, {
+          avatar: avatarFile,
+        });
+
+        expect(response.status).toBe(200);
         expect(response.body.data.updateAvatar.avatar).toBeDefined();
+      });
+    });
+
+    describe("should update user online presence", () => {
+      let token: string;
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+      });
+
+      it("should successfully update user online presence", async () => {
+        const mutation = `
+          mutation UpdateUserPresence($isOnline: Boolean!) {
+            updateUserPresence(isOnline: $isOnline) {
+              _id
+              email
+              username
+              isOnline
+            }
+          }
+          `;
+
+        const response = await performMutation(token, mutation,{ isOnline: true })
+        expect(response.body.data.updateUserPresence).toBeDefined()
+        expect(response.status).toBe(200)
+        expect(response.body.data.updateUserPresence).toMatchObject({isOnline: true})
       });
     });
 
