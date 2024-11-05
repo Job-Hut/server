@@ -13,6 +13,7 @@ type Job {
   description: String
   salary: String
   source: String
+  sourceUrl: String
   since: String
 }
 
@@ -26,9 +27,9 @@ export const resolvers = {
     getJobs: async (_, { page = 1, query }) => {
       const data = await redis.get(`jobs-${page}-${query}`);
 
-      // if (data) {
-      //   return JSON.parse(data);
-      // }
+      if (data) {
+        return JSON.parse(data);
+      }
 
       const jobsStreet: JobVacancy[] = await jobStreet({
         page,

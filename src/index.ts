@@ -152,7 +152,11 @@ export const setupApplication = async ({ startServer = true }) => {
 
   app.use(
     cors<cors.CorsRequest>({
-      origin: ["http://localhost:5173", "https://jobhutt.vercel.app"], // Your client URL
+      origin: [
+        "http://localhost:5173",
+        "https://jobhutt.vercel.app",
+        "http://localhost:8080",
+      ], // Your client URL
       credentials: true,
       methods: ["GET", "POST", "OPTIONS"],
       allowedHeaders: [
