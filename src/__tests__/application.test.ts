@@ -48,6 +48,12 @@ describe("Application", () => {
           completed: false,
           dueDate: "2022-01-01",
         },
+        {
+          title: "Task 2",
+          description: "Task 2 description",
+          completed: false,
+          dueDate: "2022-01-02",
+        },
       ],
     });
 
@@ -58,6 +64,56 @@ describe("Application", () => {
 
   afterAll(async () => {
     await teardownTestEnvironment();
+  });
+  it("Should return the nearest due date task that is not completed for authenticated user", async () => {
+    const query = `
+      query GetSortedByPriorityApplication {
+        getSortedByPriorityApplication {
+          _id
+          tasks {
+            _id
+            title
+            description
+            completed
+            dueDate
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.getSortedByPriorityApplication).toBeDefined();
+  });
+
+  it("should fail to return the nearest due date task that is not completed if the user is not authenticated", async () => {
+    const query = `
+      query GetSortedByPriorityApplication {
+        getSortedByPriorityApplication {
+          _id
+          tasks {
+            _id
+            title
+            description
+            completed
+            dueDate
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const response = await request(app).post("/graphql").send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
   });
 
   it("Should not return any application when user is not authenticated", async () => {

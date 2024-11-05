@@ -21,9 +21,8 @@ import User, {
 } from "../models/user.model";
 import { GraphQLUpload } from "graphql-upload-ts";
 import { upload as uploadToCloudinary } from "../services/storage/cloudinary";
-import { PubSub } from "graphql-subscriptions";
 
-const pubsub = new PubSub();
+import pubsub from "../config/pubsub";
 
 export const typeDefs = `#graphql
   
@@ -39,7 +38,7 @@ export const typeDefs = `#graphql
     password: String!
     profile: Profile
     collections: [Collection]
-    isOnline: Boolean!
+    isOnline: Int!
     createdAt: Date
     updatedAt: Date
   }
@@ -48,6 +47,7 @@ export const typeDefs = `#graphql
     _id: ID!
     bio: String
     location: String
+    jobPrefs: [String]
     experiences: [Experience]
     education: [Education]
     licenses: [License]
@@ -67,7 +67,7 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String!
     institute: String!
-    startDate: String!
+    startDate: Date!
     endDate: Date
   }
 
@@ -118,7 +118,7 @@ export const typeDefs = `#graphql
   }
   
   type Query {
-    getAllUsers: [User]
+    getAllUsers(keyword: String): [User]
     getUserById(userId: String!): User
     getAuthenticatedUser: User
   }
@@ -129,6 +129,7 @@ export const typeDefs = `#graphql
     updateAvatar(avatar: Upload): User
     updateLocation(location: String): Profile!
     updateBio(bio: String): Profile!
+    updateJobPrefs(jobPrefs: [String]): Profile!
     addExperience(input: ExperienceInput): Profile!
     updateExperience(experienceId: String!, input: ExperienceInput): Profile!
     deleteExperience(experienceId: String!): Profile!
@@ -149,7 +150,16 @@ export const typeDefs = `#graphql
 export const resolvers = {
   Upload: GraphQLUpload,
   Query: {
-    getAllUsers: async () => {
+    getAllUsers: async (_: unknown, { keyword }) => {
+      if (keyword) {
+        return await User.find({
+          $or: [
+            { username: { $regex: keyword, $options: "i" } },
+            { email: { $regex: keyword, $options: "i" } },
+            { fullName: { $regex: keyword, $options: "i" } },
+          ],
+        });
+      }
       return await User.find();
     },
     getUserById: async (_: unknown, { userId }: { userId: string }) => {
@@ -257,6 +267,24 @@ export const resolvers = {
         throw new Error("Update Failed: " + error.message);
       }
     },
+    updateJobPrefs: async (
+      _: unknown,
+      { jobPrefs }: { jobPrefs: string[] },
+      context,
+    ) => {
+      try {
+        const loggedUser = await context.authentication();
+        const user = await User.findByIdAndUpdate(
+          loggedUser._id,
+          { "profile.jobPrefs": jobPrefs },
+          { new: true }
+        );
+        if (!user) throw new Error("User not found");
+        return user.profile;
+      } catch (error) {
+        throw new Error("Update Failed: " + error.message);
+      }
+    },    
     addExperience: async (
       _: unknown,
       { input }: { input: ExperienceInput },
@@ -372,17 +400,26 @@ export const resolvers = {
 
       if (!user) throw new Error("User not found");
 
-      user.isOnline = isOnline;
+      console.log(user.username, "--", isOnline);
+
+      if (isOnline) {
+        user.isOnline += 1;
+      } else {
+        user.isOnline -= 1;
+      }
+
       await user.save();
 
       pubsub.publish("USER_PRESENCE", { userPresence: user });
 
       user.collections.forEach(async (collectionId) => {
-        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId}`, { userPresence: user });
+        pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId.toString()}`, {
+          collectionUserPresence: user,
+        });
       });
 
       return user;
-    }
+    },
   },
   Subscription: {
     userPresence: {
