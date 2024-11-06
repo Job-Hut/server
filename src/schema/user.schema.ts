@@ -127,7 +127,7 @@ export const typeDefs = `#graphql
   type Mutation {
     register(input: RegisterInput): User!
     login(email: String!, password: String!): AuthPayload!
-    updateProfile(fullName: String!, username: String!, location: String!, bio: String!): User
+    updateProfile(fullName: String!, username: String!, location: String!, bio: String!, jobPrefs: [String]): User
     updateAvatar(avatar: Upload): User
     updateLocation(location: String): Profile!
     updateBio(bio: String): Profile!
@@ -227,7 +227,14 @@ export const resolvers = {
         username,
         location,
         bio,
-      }: { fullName: string; username: string; location: string; bio: string },
+        jobPrefs,
+      }: {
+        fullName: string;
+        username: string;
+        location: string;
+        bio: string;
+        jobPrefs: string[];
+      },
       context,
     ) => {
       try {
@@ -249,7 +256,9 @@ export const resolvers = {
             username,
             "profile.location": location,
             "profile.bio": bio,
+            "profile.jobPrefs": jobPrefs,
           },
+
           { new: true },
         );
         if (!user) throw new Error("User not found");
@@ -445,9 +454,9 @@ export const resolvers = {
       if (!user) throw new Error("User not found");
 
       if (isOnline) {
-        user.isOnline += 1;
+        user.isOnline = 1;
       } else {
-        user.isOnline -= 1;
+        user.isOnline = -1;
       }
 
       await user.save();

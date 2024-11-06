@@ -1,4 +1,5 @@
 import Application from "../models/application.model";
+import Collection from "../models/collection.model";
 import User from "../models/user.model";
 import model from "../services/ai/gemini";
 
@@ -29,6 +30,7 @@ export const typeDefs = `#graphql
     salary: Int
     type: String
     tasks: [Task]
+    source: String
     startDate: Date
     endDate: Date
     createdAt: Date
@@ -38,6 +40,7 @@ export const typeDefs = `#graphql
   input TaskInput {
     title: String
     description: String
+    stage: String
     completed: Boolean
     dueDate: Date
   }
@@ -52,6 +55,7 @@ export const typeDefs = `#graphql
     location: String
     salary: Int
     type: String
+    source: String
     startDate: Date
     endDate: Date
   }
@@ -172,6 +176,13 @@ export const resolvers = {
         ...args.input,
       });
 
+      if (args.input.collectionId) {
+        const collection = await Collection.findById(args.input.collectionId);
+        if (!collection) throw new Error("Collection not found");
+        collection.applications.push(newApplication._id);
+        await collection.save();
+      }
+
       return await newApplication.save();
     },
 
@@ -188,6 +199,15 @@ export const resolvers = {
       const result = await Application.findByIdAndUpdate(_id, input, {
         new: true,
       });
+
+      if (input.collectionId) {
+        const collection = await Collection.findById(input.collectionId);
+        if (!collection) throw new Error("Collection not found");
+        if (!collection.applications.includes(_id)) {
+          collection.applications.push(_id);
+          await collection.save();
+        }
+      }
 
       if (!result) throw new Error("Application not found");
       return result;
