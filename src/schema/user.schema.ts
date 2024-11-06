@@ -269,7 +269,6 @@ export const resolvers = {
     },
     updateAvatar: async (_: unknown, { avatar }, context) => {
       try {
-        console.log(avatar);
         const loggedUser = await context.authentication();
         const upload = await uploadToCloudinary(avatar);
 

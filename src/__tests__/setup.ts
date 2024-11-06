@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { setupApplication } from "../index";
+import { setupApplication } from "../server";
 import mongoose from "mongoose";
 import redis from "../config/redis";
 import { init } from "../config/mongodb";
@@ -15,7 +15,7 @@ export const setupTestEnvironment = async () => {
   await redis.flushall();
 
   // Setup application without starting HTTP server
-  const { app } = await setupApplication({ startServer: false });
+  const { app } = await setupApplication();
   return app;
 };
 
