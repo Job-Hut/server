@@ -785,7 +785,10 @@ describe("Collection", () => {
     `;
 
     const message = "Hello, this is a test message.";
-    const variables = { collectionId: collection._id.toString(), message };
+    const variables = {
+      collectionId: collection._id.toString(),
+      message,
+    };
 
     const response = await request(app)
       .post("/graphql")
