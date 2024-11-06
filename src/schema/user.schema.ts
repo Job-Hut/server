@@ -452,7 +452,7 @@ export const resolvers = {
 
       await user.save();
 
-      pubsub.publish("USER_PRESENCE", { userPresence: user });
+      // pubsub.publish("USER_PRESENCE", { userPresence: user });
 
       user.collections.forEach(async (collectionId) => {
         pubsub.publish(`COLLECTION_USER_PRESENCE_${collectionId.toString()}`, {
@@ -463,9 +463,9 @@ export const resolvers = {
       return user;
     },
   },
-  Subscription: {
-    userPresence: {
-      subscribe: () => pubsub.asyncIterator("USER_PRESENCE"),
-    },
-  },
+  // Subscription: {
+  //   userPresence: {
+  //     subscribe: () => pubsub.asyncIterator("USER_PRESENCE"),
+  //   },
+  // },
 };
