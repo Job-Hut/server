@@ -4,6 +4,7 @@ import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import { signToken } from "../helpers/jwt";
 import { register } from "../models/user.model";
 import Application from "../models/application.model";
+import Collection from "../models/collection.model";
 
 describe("Application", () => {
   let app: Express;
@@ -237,6 +238,118 @@ describe("Application", () => {
       user._id.toString(),
     );
     expect(response.body.data.createApplication.collectionId).toBeNull();
+  });
+
+  it("should throw an error if collectionId is invalid or not found", async () => {
+    const invalidCollectionId = "605c72ef153207001f6438a";
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        query: `
+          mutation CreateApplication($input: ApplicationInput!) {
+            createApplication(input: $input) {
+              jobTitle
+            }
+          }
+        `,
+        variables: {
+          input: {
+            ownerId: user._id,
+            collectionId: invalidCollectionId,
+            jobTitle: "Software Engineer",
+            description: "Software Engineer at Google",
+            organizationName: "Google",
+            organizationAddress: "Mountain View, CA",
+            organizationLogo: "https://google.com/logo.png",
+            location: "Mountain View, CA",
+            salary: 150000,
+            type: "Full-time",
+            startDate: "2022-01-01",
+            endDate: "2022-12-31",
+            tasks: [
+              {
+                title: "Task 1",
+                description: "Task 1 description",
+                completed: false,
+                dueDate: "2022-01-01",
+              },
+            ],
+          },
+        },
+      });
+
+    console.log(response.body, "<<< pertama");
+    expect(response.status).toBe(400);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
+  it("should successfully create an application and add it to the collection", async () => {
+    const collection = new Collection({
+      name: "Engineering Jobs",
+      description: "A collection for engineering job applications",
+    });
+    await collection.save();
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        query: `
+          mutation CreateApplication($input: ApplicationInput!) {
+            createApplication(input: $input) {
+              jobTitle
+              collectionId
+            }
+          }
+        `,
+        variables: {
+          input: {
+            ownerId: user._id,
+            collectionId: collection._id,
+            jobTitle: "Software Engineer",
+            description: "Software Engineer at Google",
+            organizationName: "Google",
+            organizationAddress: "Mountain View, CA",
+            organizationLogo: "https://google.com/logo.png",
+            location: "Mountain View, CA",
+            salary: 150000,
+            type: "Full-time",
+            startDate: "2022-01-01",
+            endDate: "2022-12-31",
+            tasks: [
+              {
+                title: "Task 1",
+                description: "Task 1 description",
+                completed: false,
+                dueDate: "2022-01-01",
+              },
+            ],
+          },
+        },
+      });
+
+    console.log(response.body, "<<< kedua");
+    expect(response.status).toBe(200);
+    expect(response.body.data.createApplication).toBeDefined();
+    expect(response.body.data.createApplication.collectionId.toString()).toBe(
+      collection._id.toString(),
+    );
+    expect(response.body.data.createApplication.jobTitle).toBe(
+      "Software Engineer",
+    );
+
+    // const createdApplication = response.body.data.createApplication;
+    // expect(createdApplication.jobTitle).toBe("Software Engineer");
+    // expect(createdApplication.collectionId).toBe(collection._id.toString());
+
+    // Cek apakah aplikasi sudah ditambahkan ke dalam collection
+    // const updatedCollection = await Collection.findById(collection._id);
+    // expect(updatedCollection.applications).toContainEqual(
+    //   createdApplication._id,
+    // );
   });
 
   it("Should return all applications for authenticated user", async () => {
