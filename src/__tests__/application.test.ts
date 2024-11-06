@@ -386,7 +386,6 @@ describe("Application", () => {
       })
       .timeout(20000);
 
-    console.log(response.body, "<<<< generate task AI 1");
     expect(response.status).toBe(200);
     expect(response.body.data.getTasksGeneratedByAi).toBeDefined();
   });
@@ -415,7 +414,6 @@ describe("Application", () => {
         },
       });
 
-    console.log(response.body, "<<<< generate task AI 2");
     expect(response.status).toBe(200);
     expect(response.body.errors).toBeDefined();
   });
@@ -447,8 +445,6 @@ describe("Application", () => {
           },
         })
         .timeout(20000);
-
-      console.log(response.body, "<<<< generate task AI 3");
 
       expect(response.status).toBe(200);
 
@@ -496,7 +492,6 @@ describe("Application", () => {
       })
       .timeout(20000);
 
-    console.log(response.body, "<<<< generate advice AI");
     expect(response.status).toBe(200);
     expect(response.body.data.getAdviceForApplicationByAi).toBeDefined();
   });
