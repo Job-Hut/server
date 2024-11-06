@@ -158,8 +158,6 @@ async function updateProfileField(
           { new: true },
         );
         break;
-      default:
-        throw new Error("Invalid action");
     }
   }
 

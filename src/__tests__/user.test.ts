@@ -2,6 +2,9 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import mongoose from "mongoose";
+import validatePassword from "../helpers/validatePassword";
+import { register } from "../models/user.model";
+import { signToken } from "../helpers/jwt";
 
 describe("GraphQL Integration Tests for User Schema", () => {
   let app: Express;
@@ -320,6 +323,45 @@ describe("GraphQL Integration Tests for User Schema", () => {
     expect(
       passwordErrorMessages.some((msg) => errorMessages.includes(msg)),
     ).toBe(false);
+  });
+  describe("Password Validation Tests", () => {
+    it("should return true for valid password", () => {
+      const validPassword = "Valid123";
+      expect(validatePassword(validPassword)).toBe(true);
+    });
+
+    it("should throw error for password less than 8 characters", () => {
+      const shortPassword = "Short1";
+      expect(() => validatePassword(shortPassword)).toThrow(
+        "Password must be at least 8 characters long.",
+      );
+    });
+
+    it("should throw error for password without uppercase letter", () => {
+      const noUppercasePassword = "lowercase1";
+      expect(() => validatePassword(noUppercasePassword)).toThrow(
+        "Password must contain at least one uppercase letter.",
+      );
+    });
+
+    it("should throw error for password without a number", () => {
+      const noNumberPassword = "NoNumber";
+      expect(() => validatePassword(noNumberPassword)).toThrow(
+        "Password must contain at least one number.",
+      );
+    });
+
+    it("should throw error for password that fails all conditions", () => {
+      const invalidPassword = "short";
+      expect(() => validatePassword(invalidPassword)).toThrow(
+        "Password must be at least 8 characters long.",
+      );
+    });
+
+    it("should return true for a password that meets all conditions", () => {
+      const validPassword = "Valid123";
+      expect(validatePassword(validPassword)).toBe(true);
+    });
   });
 
   it("should login an existing user", async () => {
@@ -680,6 +722,40 @@ describe("GraphQL Integration Tests for User Schema", () => {
       });
 
       it("Should retrieve the authenticated user data when the user is authenticated", async () => {
+        const query = `
+          query Query {
+            getAuthenticatedUser {
+              _id
+              email
+              username
+            }
+          }
+        `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .send({ query });
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.getAuthenticatedUser).toBeDefined();
+      });
+
+      it("Should retrieve the authenticated user data when the user is authenticated but not found", async () => {
+        const user = await register(
+          "userone",
+          "",
+          "userone",
+          "iniuserbaru@mail.com",
+          "Password1@",
+        );
+
+        const token = await loginAndGetToken(
+          "iniuserbaru@mail.com",
+          "Password1@",
+        );
+
+        await user.deleteOne();
         const query = `
           query Query {
             getAuthenticatedUser {
@@ -1605,6 +1681,188 @@ describe("GraphQL Integration Tests for User Schema", () => {
         expect(response.status).toBe(200);
         expect(response.body.data.updateAvatar.avatar).toBeDefined();
       });
+    });
+
+    describe("Update User Profile Avatar", () => {
+      let token: string;
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+      });
+
+      it("should update a user's avatar", async () => {
+        const uploadAvatarMutation = `
+        mutation UpdateAvatar($avatar: Upload!) {
+          updateAvatar(avatar: $avatar) {
+            _id
+            avatar
+          }
+        }
+      `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .set("x-apollo-operation-name", "UpdateAvatar")
+          .field(
+            "operations",
+            JSON.stringify({
+              query: uploadAvatarMutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ avatar: ["variables.avatar"] }));
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updateAvatar).toBeNull();
+      });
+    });
+  });
+
+  describe("updateProfile Mutation", () => {
+    let token: string;
+
+    beforeAll(async () => {
+      token = await loginAndGetToken(
+        "newuser@example.com",
+        "StrongPassword123",
+      );
+    });
+
+    it("should update the user's profile successfully", async () => {
+      const mockUser = {
+        fullName: "New Full Name",
+        username: "newusername",
+        profile: {
+          location: "New Location",
+          bio: "New Bio",
+          jobPrefs: ["New Job Pref 1", "New Job Pref 2"],
+        },
+      };
+
+      const updateProfileMutation = `
+        mutation UpdateProfile($fullName: String!, $username: String!, $location: String!, $bio: String!, $jobPrefs: [String!]!) {
+          updateProfile(fullName: $fullName, username: $username, location: $location, bio: $bio, jobPrefs: $jobPrefs) {
+            _id
+            fullName
+            username
+            profile {
+              location
+              bio
+              jobPrefs
+            }
+          }
+        }
+      `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          query: updateProfileMutation,
+          variables: {
+            fullName: "New Full Name",
+            username: "newusername",
+            location: "New Location",
+            bio: "New Bio",
+            jobPrefs: ["New Job Pref 1", "New Job Pref 2"],
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.updateProfile.fullName).toBe(mockUser.fullName);
+      expect(response.body.data.updateProfile.username).toBe(mockUser.username);
+      expect(response.body.data.updateProfile.profile.location).toBe(
+        mockUser.profile.location,
+      );
+      expect(response.body.data.updateProfile.profile.bio).toBe(
+        mockUser.profile.bio,
+      );
+      expect(response.body.data.updateProfile.profile.jobPrefs).toEqual(
+        mockUser.profile.jobPrefs,
+      );
+    });
+
+    it("should return an error if the username is already taken", async () => {
+      const updateProfileMutation = `
+        mutation UpdateProfile($fullName: String!, $username: String!, $location: String!, $bio: String!, $jobPrefs: [String!]!) {
+          updateProfile(fullName: $fullName, username: $username, location: $location, bio: $bio, jobPrefs: $jobPrefs) {
+            _id
+            fullName
+            username
+            profile {
+              location
+              bio
+              jobPrefs
+            }
+          }
+        }
+      `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          query: updateProfileMutation,
+          variables: {
+            fullName: "New Full Name",
+            username: "duplicateEmailUser",
+            location: "New Location",
+            bio: "New Bio",
+            jobPrefs: ["New Job Pref 1", "New Job Pref 2"],
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toBe(
+        "Update Failed: Username is already taken",
+      );
+    });
+
+    it("should return an error if the user is not found", async () => {
+      const token = signToken({
+        _id: "60f1b1b4b3b3b3b3b3b3b3b3",
+        email: "aa@mail.com",
+        username: "aa",
+      });
+      const updateProfileMutation = `
+        mutation UpdateProfile($fullName: String!, $username: String!, $location: String!, $bio: String!, $jobPrefs: [String!]!) {
+          updateProfile(fullName: $fullName, username: $username, location: $location, bio: $bio, jobPrefs: $jobPrefs) {
+            _id
+            fullName
+            username
+            profile {
+              location
+              bio
+              jobPrefs
+            }
+          }
+        }
+      `;
+
+      const response = await request(app)
+        .post("/graphql")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          query: updateProfileMutation,
+          variables: {
+            fullName: "New Full Name",
+            username: "newusername",
+            location: "New Location",
+            bio: "New Bio",
+            jobPrefs: ["New Job Pref 1", "New Job Pref 2"],
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.errors).toBeDefined();
+      expect(response.body.errors[0].message).toBe(
+        "Update Failed: User not found",
+      );
     });
   });
 });

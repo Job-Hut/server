@@ -85,8 +85,6 @@ export const resolvers = {
 
       const user = await User.findById(loggedUser._id);
 
-      if (!user) throw new Error("User not found");
-
       const result = await Application.find({ ownerId: user._id });
       return result;
     },
@@ -94,7 +92,6 @@ export const resolvers = {
       const loggedUser = await context.authentication();
 
       const user = await User.findById(loggedUser._id);
-      if (!user) throw new Error("User not found");
 
       const currentDate = new Date();
 
