@@ -19,7 +19,7 @@ export const typeDefs = `#graphql
     _id: ID!
     name: String
     description: String
-    ownerId: ID!
+    ownerId: User
     sharedWith: [User]
     applications: [Application]
     chat: [Message]
@@ -104,6 +104,7 @@ export const resolvers = {
           { $or: [{ ownerId: user._id }, { sharedWith: user._id }] },
         ],
       })
+        .populate("ownerId")
         .populate("sharedWith")
         .populate("applications")
         .populate("chat.senderId");
