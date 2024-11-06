@@ -82,7 +82,6 @@ describe("Collection", () => {
           _id
           name
           description
-          ownerId
           createdAt
           updatedAt
         }
@@ -103,7 +102,9 @@ describe("Collection", () => {
           _id
           name
           description
-          ownerId
+          ownerId {
+            _id
+          }
           createdAt
           updatedAt
         }
@@ -128,7 +129,7 @@ describe("Collection", () => {
     expect(response.body.data.createCollection.description).toBe(
       "List of frontend application",
     );
-    expect(response.body.data.createCollection.ownerId).toBe(
+    expect(response.body.data.createCollection.ownerId._id).toBe(
       user._id.toString(),
     );
   });
@@ -140,7 +141,9 @@ describe("Collection", () => {
           _id
           name
           description
-          ownerId
+          ownerId {
+            _id
+          }
           createdAt
           updatedAt
         }

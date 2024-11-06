@@ -79,8 +79,6 @@ export const createApolloServer = (
               const decoded = verifyToken(token);
               const user = await User.findById(decoded._id);
 
-              console.log(token, "<<<<", user.username);
-
               user.isOnline = -1;
 
               await user.save();
