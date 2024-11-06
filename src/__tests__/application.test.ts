@@ -2,8 +2,9 @@ import { Express } from "express";
 import request from "supertest";
 import { setupTestEnvironment, teardownTestEnvironment } from "./setup";
 import { signToken } from "../helpers/jwt";
-import { register } from "../models/user.model";
+import User, { login, register } from "../models/user.model";
 import Application from "../models/application.model";
+import Collection from "../models/collection.model";
 
 describe("Application", () => {
   let app: Express;
@@ -148,6 +149,54 @@ describe("Application", () => {
     expect(response.body.errors).toBeDefined();
   });
 
+  it("Should not return any application when user is not authenticated", async () => {
+    const user = await register(
+      "testtuser",
+      "testavatar",
+      "testfullname",
+      "testt@mail.com",
+      "Password123@",
+    );
+    const token = signToken({
+      _id: user._id.toString(),
+      username: user.username,
+      email: user.email,
+    });
+
+    await User.deleteOne({ _id: user._id });
+
+    const query = `
+      query GetAllApplication {
+          getAllApplication {
+              _id
+              ownerId
+              collectionId
+              jobTitle
+              description
+              organizationName
+              organizationAddress
+              organizationLogo
+              location
+              salary
+              type
+              startDate
+              endDate
+              createdAt
+              updatedAt
+          }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.getAllApplication).toBeNull();
+    expect(response.body.errors).toBeDefined();
+  });
+
   it("Should not create a new application when user is not authenticated", async () => {
     const query = `
       mutation CreateApplication {
@@ -191,10 +240,17 @@ describe("Application", () => {
   });
 
   it("Should create a new application for authenticated user", async () => {
+    const collection = new Collection({
+      ownerId: user._id,
+      name: "Collection 1",
+    });
+
+    await collection.save();
+
     const query = `
       mutation CreateApplication {
           createApplication(input: {
-              collectionId: null,
+              collectionId: "${collection._id.toString()}",
               jobTitle: "Software Engineer",
               description: "Software Engineer at Google",
               organizationName: "Google",
@@ -236,7 +292,50 @@ describe("Application", () => {
     expect(response.body.data.createApplication.ownerId).toBe(
       user._id.toString(),
     );
-    expect(response.body.data.createApplication.collectionId).toBeNull();
+  });
+  it("Should fail to  create a new application for authenticated user the collection Id is invalid", async () => {
+    const query = `
+      mutation CreateApplication {
+          createApplication(input: {
+              collectionId: "asdfasdfs",
+              jobTitle: "Software Engineer",
+              description: "Software Engineer at Google",
+              organizationName: "Google",
+              organizationAddress: "Mountain View, CA",
+              organizationLogo: "https://google.com/logo.png",
+              location: "Mountain View, CA",
+              salary: 150000,
+              type: "Full-time",
+              startDate: "2022-01-01",
+              endDate: "2022-12-31"
+          }
+          ) {
+              _id
+              ownerId
+              collectionId
+              jobTitle
+              description
+              organizationName
+              organizationAddress
+              organizationLogo
+              location
+              salary
+              type
+              startDate
+              endDate
+              createdAt
+              updatedAt
+          }
+      }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.createApplication).toBeDefined();
   });
 
   it("Should return all applications for authenticated user", async () => {
@@ -520,6 +619,57 @@ describe("Application", () => {
   });
 
   it("Should update a job application", async () => {
+    const collection = new Collection({
+      ownerId: user._id,
+      name: "Collection 1",
+    });
+
+    await collection.save();
+
+    const query = `
+    mutation UpdateApplication {
+      updateApplication(_id: "${application.id}", input: {
+        collectionId: "${collection._id}",
+        jobTitle: "Software Engineer",
+        description: "Software Engineer at Google",
+        organizationName: "Google",
+        organizationAddress: "Mountain View, CA",
+        organizationLogo: "https://google.com/logo.png",
+        location: "Mountain View, CA",
+        salary: 150000,
+        type: "Full-time",
+        startDate: "2022-01-01",
+        endDate: "2022-12-31"
+      }) {
+        _id
+        ownerId
+        collectionId
+        jobTitle
+        description
+        organizationName
+        organizationAddress
+        organizationLogo
+        location
+        salary
+        type
+        startDate
+        endDate
+        createdAt
+        updatedAt
+      }
+    }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.updateApplication).toBeDefined();
+  });
+
+  it("Should update a job application", async () => {
     const query = `
     mutation UpdateApplication {
       updateApplication(_id: "${application.id}", input: {
@@ -560,6 +710,50 @@ describe("Application", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.updateApplication).toBeDefined();
+  });
+
+  it("Should  fail update a job application when there is no collecction", async () => {
+    const query = `
+    mutation UpdateApplication {
+      updateApplication(_id: "${application.id}", input: {
+        collectionId: "60c3c1b4b5f1f7b0d4c1e8a3",
+        jobTitle: "Software Engineer",
+        description: "Software Engineer at Google",
+        organizationName: "Google",
+        organizationAddress: "Mountain View, CA",
+        organizationLogo: "https://google.com/logo.png",
+        location: "Mountain View, CA",
+        salary: 150000,
+        type: "Full-time",
+        startDate: "2022-01-01",
+        endDate: "2022-12-31"
+      }) {
+        _id
+        ownerId
+        collectionId
+        jobTitle
+        description
+        organizationName
+        organizationAddress
+        organizationLogo
+        location
+        salary
+        type
+        startDate
+        endDate
+        createdAt
+        updatedAt
+      }
+    }
+    `;
+
+    const response = await request(app)
+      .post("/graphql")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ query });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.updateApplication).toBeNull();
   });
 
   it("Should fail to update a job application if the application is not exist", async () => {
