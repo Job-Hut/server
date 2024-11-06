@@ -725,6 +725,36 @@ describe("Collection", () => {
     );
   });
 
+  it("Should throw an error when collection does not exist", async () => {
+    const nonExistentCollectionId = new mongoose.Types.ObjectId().toString();
+
+    const query = `
+      mutation RemoveApplicationFromCollection($collectionId: ID!, $applicationId: ID!) {
+        removeApplicationFromCollection(collectionId: $collectionId, applicationId: $applicationId) {
+          _id
+          name
+          applications {  
+            _id
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: nonExistentCollectionId,
+      applicationId: "60b8d0f82b11f4b388f9d6e0",
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .send({ query, variables })
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    // expect(response.status).toBe(400);
+    // expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Collection not found");
+  });
+
   it("Should add a message to the chat when the collection exists", async () => {
     const collection = new Collection({
       name: "Test Collection",
@@ -857,6 +887,63 @@ describe("Collection", () => {
       user1._id.toString(),
       user2._id.toString(),
     ]);
+  });
+
+  it("Should throw error when user ID is invalid", async () => {
+    const invalidUserId = "invalidUserId123";
+
+    const query = `
+      mutation AddUsersToCollection($collectionId: ID!, $userIds: [ID!]!) {
+        addUsersToCollection(collectionId: $collectionId, userIds: $userIds) {
+          _id
+          name
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      userIds: [invalidUserId],
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .send({ query, variables })
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("Invalid user ID");
+  });
+
+  it("Should throw error when user is already shared with", async () => {
+    const userIdAlreadyShared = user._id.toString();
+
+    collection.sharedWith.push(userIdAlreadyShared);
+    await collection.save();
+
+    const query = `
+      mutation AddUsersToCollection($collectionId: ID!, $userIds: [ID!]!) {
+        addUsersToCollection(collectionId: $collectionId, userIds: $userIds) {
+          _id
+          name
+        }
+      }
+    `;
+
+    const variables = {
+      collectionId: collection._id.toString(),
+      userIds: [userIdAlreadyShared],
+    };
+
+    const response = await request(app)
+      .post("/graphql")
+      .send({ query, variables })
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.errors).toBeDefined();
+    expect(response.body.errors[0].message).toBe("User already shared with");
   });
 
   it("Should return an error when trying to add users to a non-existent collection", async () => {
