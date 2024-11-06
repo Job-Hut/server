@@ -260,9 +260,9 @@ export const resolvers = {
           "One or more applications are not owned by the current user.",
         );
       }
-      if (!Array.isArray(collection.applications)) {
-        collection.applications = [];
-      }
+      // if (!Array.isArray(collection.applications)) {
+      //   collection.applications = [];
+      // }
       collection.applications.push(...applicationIds);
       await collection.save();
 

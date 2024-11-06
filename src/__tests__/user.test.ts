@@ -1567,5 +1567,44 @@ describe("GraphQL Integration Tests for User Schema", () => {
         expect(response.body.errors[0].message).toContain("Delete Failed");
       });
     });
+
+    describe("Update User Profile Avatar", () => {
+      let token: string;
+
+      beforeAll(async () => {
+        token = await loginAndGetToken(
+          "newuser@example.com",
+          "StrongPassword123",
+        );
+      });
+
+      it("should update a user's avatar", async () => {
+        const uploadAvatarMutation = `
+        mutation UpdateAvatar($avatar: Upload!) {
+          updateAvatar(avatar: $avatar) {
+            _id
+            avatar
+          }
+        }
+      `;
+
+        const response = await request(app)
+          .post("/graphql")
+          .set("Authorization", `Bearer ${token}`)
+          .set("x-apollo-operation-name", "UpdateAvatar")
+          .field(
+            "operations",
+            JSON.stringify({
+              query: uploadAvatarMutation,
+              variables: { avatar: null },
+            }),
+          )
+          .field("map", JSON.stringify({ avatar: ["variables.avatar"] }))
+          .attach("avatar", "src/__tests__/test-files/test-avatar.jpg");
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.updateAvatar.avatar).toBeDefined();
+      });
+    });
   });
 });
