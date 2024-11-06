@@ -133,7 +133,6 @@ export const resolvers = {
         },
         { $unwind: "$tasks" },
         { $sort: { "tasks.dueDate": 1 } },
-        { $limit: 1 },
         {
           $group: {
             _id: "$_id",
